@@ -995,38 +995,54 @@ function ArchiveScreen({ newEntry, onNew }) {
           <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', cursor: weekOffset === 0 ? 'default' : 'pointer', color: weekOffset === 0 ? 'var(--border)' : 'var(--text-muted)', fontSize: 13 }}>→</button>
         </div>
 
-        {/* tetris board — fixed height, pieces stack from the bottom */}
+        {/* tetris board — pieces render as single bonded shapes */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 8px' }}>
           <div style={{
-            display: 'grid',
-            gridTemplateColumns: `repeat(${COLS}, ${CELL}px)`,
-            gridTemplateRows: `repeat(${BOARD_ROWS}, ${CELL}px)`,
-            gap: 2,
+            position: 'relative',
+            width: COLS * CELL,
+            height: BOARD_ROWS * CELL,
           }}>
-            {Array.from({ length: BOARD_ROWS }, (_, rowIdx) =>
-              Array.from({ length: COLS }, (_, colIdx) => {
-                // rowIdx 0 = top of visible board; bottom row = BOARD_ROWS-1
-                // Map so the lowest placement row sits at the bottom.
-                const r = maxRow - (BOARD_ROWS - 1 - rowIdx);
-                const key = `${r},${colIdx}`;
-                const placement = cellToItem[key];
-                const c = placement ? placement.color : null;
-                return (
-                  <div
-                    key={`${rowIdx}-${colIdx}`}
-                    onClick={() => placement && setSelectedItem(placement.item)}
-                    style={{
-                      width: CELL, height: CELL,
-                      background: c ? c.base : 'transparent',
-                      cursor: placement ? 'pointer' : 'default',
-                      transition: 'opacity 0.1s',
-                    }}
-                    onMouseEnter={e => { if (c) e.currentTarget.style.opacity = '0.85'; }}
-                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-                  />
-                );
-              })
-            )}
+            {placements.map((p, idx) => {
+              // Compute bounding box of the piece in board coords
+              const rs = p.cells.map(([r]) => r);
+              const cs = p.cells.map(([, c]) => c);
+              const rMin = Math.min(...rs), rMax = Math.max(...rs);
+              const cMin = Math.min(...cs), cMax = Math.max(...cs);
+              // Translate piece rows to visible board rows (bottom-aligned)
+              const visibleTopRow = (BOARD_ROWS - 1) - (maxRow - rMin);
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setSelectedItem(p.item)}
+                  style={{
+                    position: 'absolute',
+                    left: cMin * CELL,
+                    top: visibleTopRow * CELL,
+                    width: (cMax - cMin + 1) * CELL,
+                    height: (rMax - rMin + 1) * CELL,
+                    cursor: 'pointer',
+                    transition: 'opacity 0.12s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }}
+                  onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                >
+                  {/* fill each occupied cell within the bounding box */}
+                  {p.cells.map(([r, c], i) => (
+                    <div
+                      key={i}
+                      style={{
+                        position: 'absolute',
+                        left: (c - cMin) * CELL,
+                        top: (r - rMin) * CELL,
+                        width: CELL,
+                        height: CELL,
+                        background: p.color.base,
+                      }}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
 
