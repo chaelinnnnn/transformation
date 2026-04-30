@@ -689,8 +689,12 @@ function CompletionScreen({ task, onArchive }) {
   if (done) return (
     <Screen>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, gap: 20 }}>
-        <div style={{ animation: 'fadeUp 0.4s ease', fontSize: 48 }}></div>
-        <h2 style={{ fontSize: 24, fontWeight: 700, textAlign: 'center', animation: 'fadeUp 0.4s 0.1s ease both' }}>
+        <div style={{ animation: 'fadeUp 0.4s ease', width: 64, height: 64, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12.5l5 5L20 7" stroke="#16130f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <h2 style={{ fontSize: 24, fontWeight: 700, textAlign: 'center', color: 'var(--text)', animation: 'fadeUp 0.4s 0.1s ease both' }}>
           Today's first action<br />is logged!
         </h2>
         <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', animation: 'fadeUp 0.4s 0.2s ease both' }}>
@@ -829,48 +833,44 @@ const CELL = 40;
 const BEVEL = 4;
 
 function buildTetrisGrid(items) {
-  // grid[row][col] = itemId | null
-  const grid = Array.from({ length: 40 }, () => Array(COLS).fill(null));
-  const placements = []; // { item, cells: [[r,c],...], color }
+  const ROWS = 40;
+  const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  const placements = [];
 
-  const isOccupied = (r, c) => r < 0 || r >= 40 || c < 0 || c >= COLS || grid[r][c] !== null;
-
+  const isOccupied = (r, c) => r < 0 || r >= ROWS || c < 0 || c >= COLS || grid[r][c] !== null;
   const canPlace = (shape, startR, startC) =>
     shape.every(([dr, dc]) => !isOccupied(startR + dr, startC + dc));
 
-  const drop = (shape, startC) => {
-    // Find lowest valid row
-    for (let r = 39; r >= 0; r--) {
-      if (canPlace(shape, r - Math.max(...shape.map(([dr]) => dr)), startC)) {
-        const topR = r - Math.max(...shape.map(([dr]) => dr));
-        if (topR >= 0) return topR;
-      }
+  // For a given column position, find the deepest topR where the shape can sit
+  const dropTopR = (shape, startC) => {
+    let best = -1;
+    for (let topR = 0; topR < ROWS; topR++) {
+      if (canPlace(shape, topR, startC)) best = topR;
+      else if (best >= 0) break; // once blocked after finding a spot, stop
     }
-    return 0;
+    return best;
   };
 
-    items.forEach((item, idx) => {
+  items.forEach((item) => {
     const shape = TETRIS_SHAPES[item.id % TETRIS_SHAPES.length];
     const color = TETRIS_COLORS[item.id % TETRIS_COLORS.length];
-    
-    // Try columns left to right, find best fit
-    let bestR = -1, bestC = 0, bestHeight = -1;
-    for (let c = 0; c <= COLS - 1; c++) {
-      const maxDC = Math.max(...shape.map(([,dc]) => dc));
-      if (c + maxDC > COLS - 1) continue;
-      if (canPlace(shape, 0, c)) {
-        const topR = drop(shape, c);
-        if (topR > bestHeight) { bestHeight = topR; bestC = c; bestR = topR; }
-      }
+
+    const maxDC = Math.max(...shape.map(([, dc]) => dc));
+    let bestR = -1, bestC = 0;
+
+    // Try every starting column, pick the deepest landing
+    for (let c = 0; c + maxDC < COLS; c++) {
+      const topR = dropTopR(shape, c);
+      if (topR > bestR) { bestR = topR; bestC = c; }
     }
-    if (bestR < 0) bestR = 0;
-    
+    if (bestR < 0) return; // no fit, skip
+
     const cells = shape.map(([dr, dc]) => [bestR + dr, bestC + dc]);
-    cells.forEach(([r, c]) => { if (r >= 0 && r < 40 && c >= 0 && c < COLS) grid[r][c] = item.id; });
+    cells.forEach(([r, c]) => { grid[r][c] = item.id; });
     placements.push({ item, cells, color });
   });
 
-  // Find used rows
+  // Find used rows — bottom is highest row index
   const usedRows = new Set();
   placements.forEach(p => p.cells.forEach(([r]) => usedRows.add(r)));
   const maxRow = usedRows.size > 0 ? Math.max(...usedRows) : 4;
