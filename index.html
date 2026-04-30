@@ -778,14 +778,25 @@ function CompletionScreen({ task, onArchive }) {
 }
 
 // ── Screen 6: Archive ──────────────────────────────────────
+// Today is Thu Apr 30, 2026. ISO dates so we can group by week.
 const SAMPLE_ARCHIVE = [
-  { id: 1, task: 'Memorize 20 vocab words', text: 'Done faster than I thought.', date: 'Mon, Apr 28' },
-  { id: 2, task: 'Read 10 pages', text: '10 pages turned into 30.', date: 'Tue, Apr 29' },
-  { id: 3, task: 'Exercise for 5 min', text: '5 minutes became 20.', date: 'Wed, Apr 30' },
-  { id: 4, task: 'Write 200 words', text: 'Got into a flow state.', date: 'Thu, Apr 24' },
-  { id: 5, task: 'Meditate 5 min', text: 'Harder than expected.', date: 'Fri, Apr 25' },
-  { id: 6, task: 'Cold shower', text: null, date: 'Sat, Apr 26' },
-  { id: 7, task: 'Journaling', text: 'Felt good.', date: 'Sun, Apr 27' },
+  // This week (Mon Apr 27 – Sun May 3)
+  { id: 1, task: 'Memorize 20 vocab words', text: 'Done faster than I thought.', date: '2026-04-27' },
+  { id: 2, task: 'Read 10 pages', text: '10 pages turned into 30.', date: '2026-04-28' },
+  { id: 3, task: 'Exercise for 5 min', text: '5 minutes became 20.', date: '2026-04-29' },
+  // Last week (Mon Apr 20 – Sun Apr 26)
+  { id: 4, task: 'Write 200 words', text: 'Got into a flow state.', date: '2026-04-20' },
+  { id: 5, task: 'Meditate 5 min', text: 'Harder than expected.', date: '2026-04-21' },
+  { id: 6, task: 'Cold shower', text: null, date: '2026-04-22' },
+  { id: 7, task: 'Journaling', text: 'Felt good.', date: '2026-04-23' },
+  { id: 8, task: 'Walk 1km', text: 'Crisp morning.', date: '2026-04-24' },
+  { id: 9, task: 'Drink 2L water', text: null, date: '2026-04-25' },
+  { id: 10, task: 'Stretch 10 min', text: 'Tight shoulders eased up.', date: '2026-04-26' },
+  // 2 weeks ago (Mon Apr 13 – Sun Apr 19)
+  { id: 11, task: 'Sketch one page', text: 'Loose lines today.', date: '2026-04-13' },
+  { id: 12, task: 'No phone for 1hr', text: 'Surprisingly calm.', date: '2026-04-15' },
+  { id: 13, task: 'Cook dinner', text: 'Pasta turned out great.', date: '2026-04-17' },
+  { id: 14, task: 'Read essay', text: null, date: '2026-04-19' },
 ];
 
 // Tetris piece shapes (row,col offsets from top-left) — all 7 standard pieces + rotations
@@ -833,73 +844,127 @@ const CELL = 40;
 const BEVEL = 4;
 
 function buildTetrisGrid(items) {
-  const ROWS = 40;
+  const ROWS = 60;
   const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
   const placements = [];
 
-  const isOccupied = (r, c) => r < 0 || r >= ROWS || c < 0 || c >= COLS || grid[r][c] !== null;
-  const canPlace = (shape, startR, startC) =>
-    shape.every(([dr, dc]) => !isOccupied(startR + dr, startC + dc));
-
-  // For a given column position, find the deepest topR where the shape can sit
-  const dropTopR = (shape, startC) => {
-    let best = -1;
-    for (let topR = 0; topR < ROWS; topR++) {
-      if (canPlace(shape, topR, startC)) best = topR;
-      else if (best >= 0) break; // once blocked after finding a spot, stop
-    }
-    return best;
-  };
+  const cellFree = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS && grid[r][c] === null;
+  const canPlace = (shape, topR, startC) =>
+    shape.every(([dr, dc]) => cellFree(topR + dr, startC + dc));
 
   items.forEach((item) => {
     const shape = TETRIS_SHAPES[item.id % TETRIS_SHAPES.length];
     const color = TETRIS_COLORS[item.id % TETRIS_COLORS.length];
 
     const maxDC = Math.max(...shape.map(([, dc]) => dc));
-    let bestR = -1, bestC = 0;
 
-    // Try every starting column, pick the deepest landing
+    let bestR = -1, bestC = 0, bestScore = -Infinity;
+
     for (let c = 0; c + maxDC < COLS; c++) {
-      const topR = dropTopR(shape, c);
-      if (topR > bestR) { bestR = topR; bestC = c; }
+      // find deepest valid landing in this column (gravity drop)
+      let landed = -1;
+      for (let topR = 0; topR < ROWS; topR++) {
+        if (canPlace(shape, topR, c)) landed = topR;
+        else if (landed >= 0) break;
+      }
+      if (landed < 0) continue;
+
+      // score = depth - holes_created (penalize gaps below the piece)
+      const cells = shape.map(([dr, dc]) => [landed + dr, c + dc]);
+      const colsUsed = [...new Set(cells.map(([, cc]) => cc))];
+      let holes = 0;
+      colsUsed.forEach(cc => {
+        const lowest = Math.max(...cells.filter(([, x]) => x === cc).map(([r]) => r));
+        for (let r = lowest + 1; r < ROWS; r++) {
+          if (grid[r][cc] === null) holes++;
+          else break;
+        }
+      });
+      const score = landed * 100 - holes * 30;
+      if (score > bestScore) { bestScore = score; bestR = landed; bestC = c; }
     }
-    if (bestR < 0) return; // no fit, skip
+
+    if (bestR < 0) return;
 
     const cells = shape.map(([dr, dc]) => [bestR + dr, bestC + dc]);
     cells.forEach(([r, c]) => { grid[r][c] = item.id; });
     placements.push({ item, cells, color });
   });
 
-  // Find used rows — bottom is highest row index
   const usedRows = new Set();
   placements.forEach(p => p.cells.forEach(([r]) => usedRows.add(r)));
   const maxRow = usedRows.size > 0 ? Math.max(...usedRows) : 4;
+  const minRow = usedRows.size > 0 ? Math.min(...usedRows) : 0;
 
-  return { grid, placements, maxRow };
+  return { grid, placements, maxRow, minRow };
+}
+
+// Get Monday 00:00 of the week containing the given date
+function getWeekStart(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function formatWeekRange(weekStart) {
+  const end = new Date(weekStart);
+  end.setDate(end.getDate() + 6);
+  const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return `${fmt(weekStart)} – ${fmt(end)}`;
+}
+
+function formatItemDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 function ArchiveScreen({ newEntry, onNew }) {
   const [items, setItems] = useState(SAMPLE_ARCHIVE);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, 1 = last week, ...
 
   useEffect(() => {
     if (newEntry) {
       setTimeout(() => {
+        const today = new Date();
+        const iso = today.toISOString().slice(0, 10);
         setItems(prev => [{
           id: Date.now() % 1000, task: newEntry.task, text: newEntry.text,
-          date: 'Today',
+          date: iso, photo: newEntry.photo,
         }, ...prev]);
+        setWeekOffset(0); // jump to current week to see new entry
       }, 100);
     }
   }, [newEntry]);
 
-  const { grid, placements, maxRow } = buildTetrisGrid(items);
-  const displayRows = maxRow + 2;
+  // Compute current week window
+  const thisWeekStart = getWeekStart(new Date());
+  const viewWeekStart = new Date(thisWeekStart);
+  viewWeekStart.setDate(viewWeekStart.getDate() - weekOffset * 7);
+  const viewWeekEnd = new Date(viewWeekStart);
+  viewWeekEnd.setDate(viewWeekEnd.getDate() + 7);
+
+  const weekItems = items.filter(it => {
+    const d = new Date(it.date);
+    return d >= viewWeekStart && d < viewWeekEnd;
+  });
+
+  // Check if older weeks have any items (to disable ← button when empty)
+  const oldestItem = items.reduce((min, it) => {
+    const d = new Date(it.date);
+    return !min || d < min ? d : min;
+  }, null);
+  const maxOffset = oldestItem ? Math.floor((thisWeekStart - getWeekStart(oldestItem)) / (7 * 86400000)) : 0;
+
+  const { grid, placements, maxRow, minRow } = buildTetrisGrid(weekItems);
+  const displayRows = Math.max(maxRow - minRow + 2, 6);
 
   // cell -> item lookup
   const cellToItem = {};
   placements.forEach(p => {
-    const key = p.cells.map(([r,c]) => `${r},${c}`).join('|');
     p.cells.forEach(([r,c]) => { cellToItem[`${r},${c}`] = p; });
   });
 
@@ -910,14 +975,27 @@ function ArchiveScreen({ newEntry, onNew }) {
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         <div style={{ padding: '52px 24px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            <Tag color="oklch(0.72 0.16 155)">Archive</Tag>
-            <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 10, marginBottom: 2 }}>Your stack</h2>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Your stack</h2>
             <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tap a piece to see details</p>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)' }}>{placements.length}</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>completed</div>
           </div>
+        </div>
+
+        {/* week selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 24px 12px' }}>
+          <button onClick={() => setWeekOffset(w => Math.min(maxOffset, w + 1))} disabled={weekOffset >= maxOffset} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', cursor: weekOffset >= maxOffset ? 'default' : 'pointer', color: weekOffset >= maxOffset ? 'var(--border)' : 'var(--text-muted)', fontSize: 13 }}>←</button>
+          <div style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)' }}>
+              {weekOffset === 0 ? 'This week' : weekOffset === 1 ? 'Last week' : `${weekOffset} weeks ago`}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+              {formatWeekRange(viewWeekStart)}
+            </div>
+          </div>
+          <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', cursor: weekOffset === 0 ? 'default' : 'pointer', color: weekOffset === 0 ? 'var(--border)' : 'var(--text-muted)', fontSize: 13 }}>→</button>
         </div>
 
         {/* tetris board */}
@@ -983,8 +1061,11 @@ function ArchiveScreen({ newEntry, onNew }) {
             borderTop: `4px solid ${TETRIS_COLORS[selectedItem.id % TETRIS_COLORS.length].base}`,
           }}>
             <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--border)', margin: '0 auto 20px' }}/>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{selectedItem.date}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{formatItemDate(selectedItem.date)}</div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{selectedItem.task}</h3>
+            {selectedItem.photo && (
+              <img src={selectedItem.photo} alt="" style={{ width: '100%', borderRadius: 10, maxHeight: 180, objectFit: 'cover', marginBottom: 12 }} />
+            )}
             {selectedItem.text && (
               <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                 "{selectedItem.text}"
