@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Just One Thing</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #16130f;
+    --surface: #211d18;
+    --surface2: #2c2720;
+    --border: rgba(255,255,255,0.07);
+    --accent: oklch(0.72 0.16 55);
+    --accent2: oklch(0.72 0.16 25);
+    --accent-dim: oklch(0.72 0.16 55 / 0.15);
+    --text: #f0ebe4;
+    --text-muted: rgba(240,235,228,0.45);
+    --text-soft: rgba(240,235,228,0.7);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --font: 'DM Sans', sans-serif;
+  }
+  html, body { width: 100%; height: 100%; background: var(--bg); font-family: var(--font); color: var(--text); }
+  #root { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes stackIn { from { opacity: 0; transform: translateY(24px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes presence { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentColor": "#d4813a",
+  "darkMode": true,
+  "presenceCount": 247,
+  "timerMinutes": 25
+}/*EDITMODE-END*/;
+
+// ── Shared UI ──────────────────────────────────────────────
+function Btn({ children, onClick, variant = 'primary', style: s, disabled }) {
+  const base = {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
+    fontFamily: 'var(--font)', fontWeight: 600, fontSize: 15,
+    borderRadius: 12, padding: '14px 24px', transition: 'all 0.18s',
+    opacity: disabled ? 0.4 : 1,
+  };
+  const styles = {
+    primary: { background: 'var(--accent)', color: '#16130f' },
+    ghost: { background: 'var(--surface2)', color: 'var(--text-soft)', border: '1px solid var(--border)' },
+    outline: { background: 'transparent', color: 'var(--accent)', border: '1.5px solid var(--accent)' },
+    danger: { background: 'oklch(0.55 0.18 25 / 0.15)', color: 'oklch(0.75 0.18 25)', border: '1px solid oklch(0.75 0.18 25 / 0.25)' },
+  };
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ ...base, ...styles[variant], ...s }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.filter = 'brightness(1.1)'; }}
+      onMouseLeave={e => { e.currentTarget.style.filter = ''; }}>
+      {children}
+    </button>
+  );
+}
+
+function Screen({ children, style: s }) {
+  return (
+    <div style={{
+      width: 390, minHeight: 844, background: 'var(--bg)',
+      display: 'flex', flexDirection: 'column',
+      position: 'relative', overflow: 'hidden',
+      borderRadius: 40, boxShadow: '0 40px 80px rgba(0,0,0,0.6)',
+      animation: 'fadeIn 0.3s ease', ...s
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function Tag({ children, color = 'var(--accent)' }) {
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center',
+      padding: '3px 10px', borderRadius: 99,
+      background: color + '18', color,
+      fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+    }}>{children}</span>
+  );
+}
+
+// ── Screen 1: Input ────────────────────────────────────────
+function InputScreen({ onNext }) {
+  const [task, setTask] = useState('');
+  const [focused, setFocused] = useState(false);
+  const examples = ['Build a workout habit', 'Read for 30 minutes', 'Update my portfolio', 'Start learning Spanish'];
+  const [exIdx, setExIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setExIdx(i => (i+1) % examples.length), 2200);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <Screen>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '72px 28px 40px' }}>
+        {/* top */}
+        <div style={{ animation: 'fadeUp 0.5s ease' }}>
+          <h1 style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.25, color: 'var(--text)', marginBottom: 10 }}>
+            Today,<br />
+            <span style={{ color: 'var(--accent)' }}>just one thing.</span>
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 36 }}>
+            It doesn't have to be big. What's one task<br />or goal you want to start today?
+          </p>
+        </div>
+
+        {/* input */}
+        <div style={{ animation: 'fadeUp 0.5s 0.1s ease both' }}>
+          <div style={{
+            border: `1.5px solid ${focused ? 'var(--accent)' : 'var(--border)'}`,
+            borderRadius: 14, padding: '4px', background: 'var(--surface)',
+            transition: 'border-color 0.2s', marginBottom: 12,
+          }}>
+            <textarea
+              value={task}
+              onChange={e => setTask(e.target.value)}
+              onFocus={() => setFocused(true)}
+              onBlur={() => setFocused(false)}
+              placeholder={`e.g. ${examples[exIdx]}`}
+              style={{
+                width: '100%', minHeight: 100, background: 'transparent', border: 'none', outline: 'none',
+                color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)', lineHeight: 1.6,
+                resize: 'none', padding: '14px 16px',
+              }}
+            />
+          </div>
+
+
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        <div style={{ animation: 'fadeUp 0.5s 0.2s ease both' }}>
+          <Btn onClick={() => onNext(task || 'Update my portfolio')} style={{ width: '100%', padding: '17px' }}>
+            Next →
+          </Btn>
+          <p style={{ textAlign: 'center', marginTop: 14, fontSize: 12, color: 'var(--text-muted)' }}>
+            Others are starting right now, too
+          </p>
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+// ── Screen 2: AI Loading ───────────────────────────────────
+function LoadingScreen({ task, onNext }) {
+  const [phase, setPhase] = useState(0);
+  const phases = ['Understanding your task...', 'Finding the smallest first step...', 'Building your custom steps...'];
+  useEffect(() => {
+    const t1 = setTimeout(() => setPhase(1), 1000);
+    const t2 = setTimeout(() => setPhase(2), 2100);
+    const t3 = setTimeout(() => onNext(), 3400);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, []);
+  return (
+    <Screen>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+        <div style={{ width: 64, height: 64, marginBottom: 32, position: 'relative' }}>
+          <div style={{
+            width: 64, height: 64, borderRadius: '50%',
+            border: '2px solid var(--border)',
+            borderTopColor: 'var(--accent)',
+            animation: 'spin 0.9s linear infinite',
+          }} />
+          <div style={{
+            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 20,
+          }}></div>
+        </div>
+
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px 20px', marginBottom: 28, maxWidth: 280, width: '100%' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Analyzing</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>"{task}"</p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 280 }}>
+          {phases.map((p, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              opacity: phase >= i ? 1 : 0.2, transition: 'opacity 0.4s',
+            }}>
+              <div style={{
+                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                background: phase > i ? 'var(--accent)' : phase === i ? 'var(--accent-dim)' : 'var(--surface2)',
+                border: phase === i ? '1.5px solid var(--accent)' : '1.5px solid var(--border)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9,
+              }}>
+                {phase > i ? '' : ''}
+              </div>
+              <span style={{ fontSize: 13, color: phase >= i ? 'var(--text-soft)' : 'var(--text-muted)' }}>{p}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+// ── Screen 3: Steps ────────────────────────────────────────
+const STEPS_DATA = [
+  {
+    id: 1, label: 'Step 1', title: 'Just sit down for 5 min',
+    options: [
+      { id: 'a', text: 'Set a 5-min timer and just sit at your desk', time: '5 min', icon: '⏱' },
+      { id: 'b', text: 'Open your laptop and create one blank document', time: '3 min', icon: '' },
+      { id: 'c', text: 'Write down exactly one thing you can do right now', time: '2 min', icon: '' },
+    ]
+  },
+  {
+    id: 2, label: 'Step 2', title: 'Start with the easiest bit',
+    options: [
+      { id: 'a', text: 'Open an existing file and review where you left off', time: '10 min', icon: '' },
+      { id: 'b', text: 'Find 3 references or examples on Google', time: '8 min', icon: '' },
+      { id: 'c', text: 'Sketch a quick outline or structure', time: '7 min', icon: '' },
+    ]
+  },
+  {
+    id: 3, label: 'Step 3', title: 'Finish one small piece',
+    options: [
+      { id: 'a', text: 'Bring just one section to a complete state', time: '20 min', icon: '' },
+      { id: 'b', text: 'Get the overall flow down, even as a rough draft', time: '25 min', icon: '' },
+      { id: 'c', text: 'Save it in a form you could show someone', time: '15 min', icon: '' },
+    ]
+  },
+];
+
+// ── Edit sub-screen component ─────────────────────────────
+function EditStepScreen({ step, stepIdx, stepsData, onSave, onBack }) {
+  const orig = stepsData.find(s => s.title === step.title) || stepsData[stepIdx] || stepsData[0];
+  const [localChosen, setLocalChosen] = useState(step.chosen);
+  const [localTime, setLocalTime] = useState(step.chosenTime || '');
+  const [localCustom, setLocalCustom] = useState(false);
+  const [localCustomText, setLocalCustomText] = useState('');
+
+  const saveEdit = () => {
+    const text = localCustom ? localCustomText.trim() : localChosen;
+    if (!text) return;
+    onSave(text, localCustom ? '?' : localTime);
+  };
+
+  return (
+    <Screen>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '56px 24px 32px' }}>
+        <button onClick={onBack} style={{
+          background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
+          fontFamily: 'var(--font)', fontSize: 13, textAlign: 'left', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 6,
+        }}>← Back</button>
+        <Tag>Step {stepIdx + 1}</Tag>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginTop: 12, marginBottom: 4 }}>{step.title}</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Pick how you want to tackle this, then save</p>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {orig.options.map(opt => {
+            const active = !localCustom && localChosen === opt.text;
+            return (
+              <button key={opt.id} onClick={() => { setLocalCustom(false); setLocalChosen(opt.text); setLocalTime(opt.time); }}
+                style={{
+                  background: active ? 'var(--accent-dim)' : 'var(--surface)',
+                  border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                  borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'flex-start', gap: 12, textAlign: 'left', transition: 'all 0.15s',
+                }}>
+                <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{opt.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, fontFamily: 'var(--font)', fontWeight: active ? 600 : 400 }}>{opt.text}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>~{opt.time}</div>
+                </div>
+                {active && <div style={{ color: 'var(--accent)', fontSize: 16, flexShrink: 0 }}></div>}
+              </button>
+            );
+          })}
+          {!localCustom ? (
+            <button onClick={() => { setLocalCustom(true); setLocalCustomText(''); }} style={{
+              background: 'transparent', border: '1.5px dashed var(--border)',
+              borderRadius: 12, padding: '13px 16px', cursor: 'pointer',
+              fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font)', textAlign: 'left',
+            }}>+ Write your own approach</button>
+          ) : (
+            <div style={{ border: '1.5px solid var(--accent)', borderRadius: 12, background: 'var(--accent-dim)', padding: '12px 16px' }}>
+              <input autoFocus value={localCustomText} onChange={e => setLocalCustomText(e.target.value)}
+                placeholder="Describe your own approach..."
+                style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', width: '100%' }} />
+            </div>
+          )}
+        </div>
+        <div style={{ paddingTop: 16 }}>
+          <Btn onClick={saveEdit} disabled={localCustom && !localCustomText.trim()} style={{ width: '100%', padding: '16px' }}>
+            Save changes 
+          </Btn>
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+function StepsScreen({ task, onNext }) {
+  // ALL hooks first — no conditional returns before this block
+  const [steps, setSteps] = useState(
+    STEPS_DATA.map(s => ({ ...s, chosen: s.options[0].text, chosenTime: s.options[0].time }))
+  );
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [dragState, setDragState] = useState(null);
+  const listRef = useRef(null);
+  const cardRefs = useRef([]);
+
+  useEffect(() => {}, [steps.length]); // placeholder to keep hook count stable
+
+  const openEdit = idx => setEditingIdx(idx);
+  const handleStart = () => onNext(steps);
+
+  const getInsertIdx = (clientY) => {
+    if (!listRef.current) return 0;
+    const cards = cardRefs.current;
+    for (let i = 0; i < cards.length; i++) {
+      if (!cards[i]) continue;
+      const rect = cards[i].getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return i;
+    }
+    return cards.length - 1;
+  };
+
+  const onHandlePointerDown = (e, idx) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    setDragState({ idx, startY, currentY: startY, insertAt: idx });
+
+    const onMove = (ev) => {
+      const clientY = ev.touches ? ev.touches[0].clientY : ev.clientY;
+      const insertAt = getInsertIdx(clientY);
+      setDragState(d => d ? { ...d, currentY: clientY, insertAt } : null);
+    };
+    const onUp = (ev) => {
+      setDragState(d => {
+        if (!d) return null;
+        const clientY = ev.touches ? ev.changedTouches[0].clientY : ev.clientY;
+        const to = getInsertIdx(clientY);
+        if (to !== d.idx) {
+          setSteps(prev => {
+            const arr = [...prev];
+            const [item] = arr.splice(d.idx, 1);
+            arr.splice(to, 0, item);
+            return arr.map((s, i) => ({ ...s, label: `Step ${i+1}`, id: i+1 }));
+          });
+        }
+        return null;
+      });
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onUp);
+  };
+
+  const DragHandle = ({ idx }) => (
+    <div
+      onPointerDown={e => onHandlePointerDown(e, idx)}
+      onTouchStart={e => onHandlePointerDown(e, idx)}
+      style={{ color: 'var(--text-muted)', opacity: 0.45, flexShrink: 0, cursor: 'grab', display: 'flex', alignItems: 'center', padding: '4px 2px', touchAction: 'none' }}>
+      <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+        <rect y="0" width="16" height="2" rx="1" fill="currentColor"/>
+        <rect y="6" width="16" height="2" rx="1" fill="currentColor"/>
+        <rect y="12" width="16" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </div>
+  );
+
+  const isDragging = dragState !== null;
+  const draggedIdx = dragState ? dragState.idx : -1;
+  const insertAt = dragState ? dragState.insertAt : -1;
+  const dy = dragState ? dragState.currentY - dragState.startY : 0;
+
+  // Main steps list
+  return (
+    <Screen>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '56px 28px 16px' }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Your 3-step plan</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Hold ≡ to reorder · Edit to change</p>
+        </div>
+        <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 20px', userSelect: 'none' }}>
+          {steps.map((step, si) => {
+            const isMoved = isDragging && si !== draggedIdx;
+            const shift = isDragging && si !== draggedIdx
+              ? (si >= Math.min(draggedIdx, insertAt) && si <= Math.max(draggedIdx, insertAt)
+                  ? (insertAt < draggedIdx ? 72 : -72)
+                  : 0)
+              : 0;
+            return (
+              <div
+                key={step.title + si}
+                ref={el => cardRefs.current[si] = el}
+                style={{
+                  marginBottom: 12,
+                  position: 'relative',
+                  zIndex: si === draggedIdx ? 10 : 1,
+                  transform: si === draggedIdx
+                    ? `translateY(${dy}px) scale(1.02)`
+                    : `translateY(${shift}px)`,
+                  transition: si === draggedIdx ? 'box-shadow 0.15s' : 'transform 0.2s cubic-bezier(0.25,0.46,0.45,0.94)',
+                  animation: !isDragging ? `fadeUp 0.4s ${si * 0.08}s ease both` : 'none',
+                }}>
+                <div style={{
+                  background: 'var(--surface)',
+                  border: `1.5px solid ${si === draggedIdx ? 'var(--accent)' : 'var(--border)'}`,
+                  borderRadius: 16, padding: '14px 16px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  boxShadow: si === draggedIdx ? '0 12px 32px rgba(0,0,0,0.4)' : 'none',
+                  transition: 'border-color 0.15s, box-shadow 0.15s',
+                }}>
+                  <DragHandle idx={si} />
+                  <div style={{
+                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                    background: 'var(--accent)', color: '#16130f',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
+                  }}>{si + 1}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Step {si + 1}</div>
+                    {editingIdx === si ? (
+                      <input
+                        autoFocus
+                        defaultValue={step.title}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') { setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: e.target.value } : s)); setEditingIdx(null); }
+                          if (e.key === 'Escape') setEditingIdx(null);
+                        }}
+                        onChange={e => setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: e.target.value } : s))}
+                        style={{
+                          background: 'transparent', border: 'none', outline: 'none',
+                          color: 'var(--text)', fontSize: 14, fontWeight: 700,
+                          fontFamily: 'var(--font)', width: '100%', padding: 0,
+                          borderBottom: '1.5px solid rgba(240,235,228,0.4)',
+                        }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{step.title}</div>
+                    )}
+                  </div>
+                  {editingIdx === si ? (
+                    <button
+                      onClick={e => { e.stopPropagation(); setEditingIdx(null); }}
+                      style={{
+                        flexShrink: 0, background: 'var(--accent)', border: 'none',
+                        borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
+                        fontSize: 12, color: '#16130f', fontFamily: 'var(--font)', fontWeight: 700,
+                      }}>Done</button>
+                  ) : (
+                    <button
+                      onClick={e => { e.stopPropagation(); setEditingIdx(si); }}
+                      style={{
+                        flexShrink: 0, background: 'var(--surface2)',
+                        border: '1px solid var(--border)', borderRadius: 8,
+                        padding: '6px 12px', cursor: 'pointer',
+                        fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600,
+                      }}>Edit</button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ padding: '12px 20px 32px' }}>
+          <Btn onClick={handleStart} style={{ width: '100%', padding: '17px' }}>
+            Start with this plan →
+          </Btn>
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+// ── Screen 4: Timer ────────────────────────────────────────
+const FALLBACK_STEPS = STEPS_DATA.map((s, i) => ({ ...s, chosen: s.options[0].text }));
+
+function TimerScreen({ steps, presenceCount, onDone }) {
+  const safeSteps = (steps && steps.length > 0) ? steps : FALLBACK_STEPS;
+  const [stepIdx, setStepIdx] = useState(0);
+  const step = safeSteps[stepIdx];
+  const totalSecs = [5 * 60, 10 * 60, 20 * 60][stepIdx];
+  const [secs, setSecs] = useState(totalSecs);
+  const [running, setRunning] = useState(false);
+  const [presence] = useState(presenceCount + Math.floor(Math.random() * 12));
+  const [presenceDelta, setPresenceDelta] = useState(0);
+  const intervalRef = useRef();
+
+  useEffect(() => {
+    if (running) {
+      intervalRef.current = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000);
+    } else clearInterval(intervalRef.current);
+    return () => clearInterval(intervalRef.current);
+  }, [running]);
+
+  useEffect(() => {
+    const t = setInterval(() => setPresenceDelta(d => d + (Math.random() > 0.5 ? 1 : -1)), 8000);
+    return () => clearInterval(t);
+  }, []);
+
+  const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  const progress = 1 - secs / totalSecs;
+  const r = 80, circ = 2 * Math.PI * r;
+
+  return (
+    <Screen>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '52px 28px 36px' }}>
+        {/* step progress */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{
+              flex: 1, height: 3, borderRadius: 99,
+              background: i < stepIdx ? 'var(--accent)' : i === stepIdx ? 'var(--surface2)' : 'var(--surface2)',
+              position: 'relative', overflow: 'hidden',
+            }}>
+              {i === stepIdx && (
+                <div style={{
+                  position: 'absolute', inset: 0, background: 'var(--accent)',
+                  transformOrigin: 'left', transform: `scaleX(${progress})`, transition: 'transform 1s linear',
+                }} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <Tag style={{ marginBottom: 12 }}>{step.label}</Tag>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, marginTop: 8 }}>{step.title}</h2>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 32 }}>{step.chosen}</p>
+
+        {/* ambient presence */}
+        <div style={{
+          background: 'var(--surface)', borderRadius: 14, padding: '12px 16px',
+          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28,
+          border: '1px solid var(--border)',
+        }}>
+          <div style={{ display: 'flex', gap: -4 }}>
+            {[...Array(5)].map((_, i) => (
+              <div key={i} style={{
+                width: 20, height: 20, borderRadius: '50%',
+                background: `oklch(0.72 0.16 ${55 + i * 18})`,
+                border: '2px solid var(--surface)',
+                marginLeft: i > 0 ? -6 : 0,
+                animation: `presence 2s ${i * 0.3}s infinite`,
+              }} />
+            ))}
+          </div>
+          <div>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>
+              {presence + presenceDelta} people
+            </span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}> working right now</span>
+          </div>
+          <div style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%', background: '#4ade80', animation: 'pulse 2s infinite' }} />
+        </div>
+
+        {/* timer ring */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'relative', width: 200, height: 200 }}>
+            <svg width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="100" cy="100" r={r} fill="none" stroke="var(--surface2)" strokeWidth="6" />
+              <circle cx="100" cy="100" r={r} fill="none" stroke="var(--accent)" strokeWidth="6"
+                strokeDasharray={circ} strokeDashoffset={circ * (1 - progress)}
+                strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear' }} />
+            </svg>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ fontSize: 38, fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px' }}>
+                {fmt(secs)}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                {running ? 'Focusing' : 'Ready'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Btn onClick={() => setRunning(r => !r)} style={{ width: '100%', padding: '17px' }}>
+            {running ? '⏸ Pause' : (secs === totalSecs ? '▶ Start Timer' : '▶ Resume')}
+          </Btn>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {stepIdx < safeSteps.length - 1 ? (
+              <Btn variant="ghost" onClick={() => { setStepIdx(i => i + 1); setSecs([5*60, 10*60, 20*60][stepIdx+1]); setRunning(false); }} style={{ flex: 1 }}>
+                Next Step
+              </Btn>
+            ) : (
+              <Btn variant="ghost" onClick={onDone} style={{ flex: 1 }}>
+                All done!
+              </Btn>
+            )}
+          </div>
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+// ── Screen 5: Completion / Verify ─────────────────────────
+function CompletionScreen({ task, onArchive }) {
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [fakeCameraPhase, setFakeCameraPhase] = useState('preview'); // preview | captured
+  const [text, setText] = useState('');
+  const [done, setDone] = useState(false);
+  const fileRef = useRef();
+  const [photoPreview, setPhotoPreview] = useState(null);
+
+  const openCamera = () => { setFakeCameraPhase('preview'); setCameraOpen(true); };
+  const takeFakePhoto = () => {
+    setFakeCameraPhase('captured');
+    setTimeout(() => {
+      // Use a placeholder gradient as "photo"
+      setPhotoPreview('data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2c2720"/><stop offset="100%" stop-color="#16130f"/></linearGradient></defs><rect width="400" height="300" fill="url(#g)"/><text x="200" y="145" font-family="sans-serif" font-size="14" fill="rgba(240,235,228,0.3)" text-anchor="middle">Photo captured</text><text x="200" y="165" font-family="sans-serif" font-size="12" fill="rgba(240,235,228,0.2)" text-anchor="middle">${new Date().toLocaleTimeString()}</text></svg>`));
+      setCameraOpen(false);
+    }, 600);
+  };
+
+  if (cameraOpen) return (
+    <Screen>
+      <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', display: 'flex', flexDirection: 'column' }}>
+        {/* fake viewfinder */}
+        <div style={{ flex: 1, background: 'linear-gradient(135deg, #1a1714 0%, #0d0b09 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+          {/* grid lines */}
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.15 }}>
+            <div style={{ position: 'absolute', left: '33%', top: 0, bottom: 0, borderLeft: '1px solid white' }}/>
+            <div style={{ position: 'absolute', left: '66%', top: 0, bottom: 0, borderLeft: '1px solid white' }}/>
+            <div style={{ position: 'absolute', top: '33%', left: 0, right: 0, borderTop: '1px solid white' }}/>
+            <div style={{ position: 'absolute', top: '66%', left: 0, right: 0, borderTop: '1px solid white' }}/>
+          </div>
+          {/* focus indicator */}
+          <div style={{ width: 80, height: 80, border: '1.5px solid var(--accent)', borderRadius: 8, opacity: 0.7 }}/>
+          {fakeCameraPhase === 'captured' && (
+            <div style={{ position: 'absolute', inset: 0, background: 'white', animation: 'fadeIn 0.1s ease', opacity: 0 }}/>
+          )}
+          {/* top bar */}
+          <div style={{ position: 'absolute', top: 56, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0 24px' }}>
+            <button onClick={() => setCameraOpen(false)} style={{ background: 'rgba(0,0,0,0.4)', border: 'none', color: 'white', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: 16 }}>×</button>
+            <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: 99, padding: '6px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Proof shot</div>
+            <div style={{ width: 36 }}/>
+          </div>
+        </div>
+        {/* shutter area */}
+        <div style={{ padding: '28px 0 48px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button onClick={takeFakePhoto} style={{
+            width: 72, height: 72, borderRadius: '50%',
+            background: 'white', border: '4px solid rgba(255,255,255,0.3)',
+            cursor: 'pointer', transition: 'transform 0.1s',
+            boxShadow: '0 0 0 3px rgba(255,255,255,0.15)',
+          }}
+            onMouseDown={e => e.currentTarget.style.transform = 'scale(0.92)'}
+            onMouseUp={e => e.currentTarget.style.transform = ''}
+          />
+        </div>
+      </div>
+    </Screen>
+  );
+
+  const handlePhoto = e => {
+    const f = e.target.files[0];
+    if (f) {
+      const url = URL.createObjectURL(f);
+      setPhotoPreview(url);
+    }
+  };
+
+  const handleVerify = () => {
+    setDone(true);
+    setTimeout(() => onArchive({ task, text: text || "First action complete!", photo: photoPreview }), 1800);
+  };
+
+  if (done) return (
+    <Screen>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, gap: 20 }}>
+        <div style={{ animation: 'fadeUp 0.4s ease', fontSize: 48 }}></div>
+        <h2 style={{ fontSize: 24, fontWeight: 700, textAlign: 'center', animation: 'fadeUp 0.4s 0.1s ease both' }}>
+          Today's first action<br />is logged!
+        </h2>
+        <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', animation: 'fadeUp 0.4s 0.2s ease both' }}>
+          Adding to your archive...
+        </p>
+      </div>
+    </Screen>
+  );
+
+  return (
+    <Screen>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px 28px 36px' }}>
+        <div style={{ animation: 'fadeUp 0.4s ease' }}>
+          <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>
+            You did it!
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 32 }}>
+            "{task}"<br/>Want to log today's first action?
+          </p>
+        </div>
+
+        {/* combined log form — always visible */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, animation: 'fadeUp 0.4s 0.1s ease both' }}>
+          <div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Attach a photo <span style={{ color: 'var(--accent)', fontWeight: 600 }}>*</span></p>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhoto} />
+            {!photoPreview ? (
+              <button onClick={openCamera} style={{
+                background: 'var(--surface)', border: '1.5px dashed var(--border)',
+                borderRadius: 12, padding: '14px 16px', cursor: 'pointer', width: '100%',
+                display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font)',
+              }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0 }}>
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M5 4l1-2h4l1 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                </div>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tap to add a photo</span>
+              </button>
+            ) : (
+              <div style={{ position: 'relative' }}>
+                <img src={photoPreview} style={{ width: '100%', borderRadius: 12, maxHeight: 150, objectFit: 'cover' }} alt="preview" />
+                <button onClick={() => setPhotoPreview(null)} style={{
+                  position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)',
+                  border: 'none', color: 'white', borderRadius: '50%', width: 26, height: 26, cursor: 'pointer', fontSize: 13,
+                }}>×</button>
+              </div>
+            )}
+          </div>
+          <div>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>How did it go? <span style={{ opacity: 0.5 }}>(optional)</span></p>
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder="e.g. Opened my laptop and outlined the first section. Easier than I expected."
+              style={{
+                background: 'var(--surface)', border: '1.5px solid var(--border)',
+                borderRadius: 12, padding: '14px', color: 'var(--text)',
+                fontSize: 14, fontFamily: 'var(--font)', lineHeight: 1.6,
+                outline: 'none', resize: 'none', minHeight: 88, width: '100%',
+                transition: 'border-color 0.2s',
+              }}
+              onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Btn onClick={handleVerify} disabled={!photoPreview} style={{ width: '100%', padding: '17px' }}>
+            Complete →
+          </Btn>
+          <button onClick={handleVerify} style={{
+            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+            fontSize: 13, cursor: 'pointer', padding: 8, fontFamily: 'var(--font)',
+          }}>Just mark it complete</button>
+        </div>
+      </div>
+    </Screen>
+  );
+}
+
+// ── Screen 6: Archive ──────────────────────────────────────
+const SAMPLE_ARCHIVE = [
+  { id: 1, task: 'Memorize 20 vocab words', text: 'Done faster than I thought.', date: 'Mon, Apr 28' },
+  { id: 2, task: 'Read 10 pages', text: '10 pages turned into 30.', date: 'Tue, Apr 29' },
+  { id: 3, task: 'Exercise for 5 min', text: '5 minutes became 20.', date: 'Wed, Apr 30' },
+  { id: 4, task: 'Write 200 words', text: 'Got into a flow state.', date: 'Thu, Apr 24' },
+  { id: 5, task: 'Meditate 5 min', text: 'Harder than expected.', date: 'Fri, Apr 25' },
+  { id: 6, task: 'Cold shower', text: null, date: 'Sat, Apr 26' },
+  { id: 7, task: 'Journaling', text: 'Felt good.', date: 'Sun, Apr 27' },
+];
+
+// Tetris piece shapes (row,col offsets from top-left) — all 7 standard pieces + rotations
+const TETRIS_SHAPES = [
+  // I — 2 rotations
+  [[0,0],[0,1],[0,2],[0,3]],
+  [[0,0],[1,0],[2,0],[3,0]],
+  // O — 1 rotation
+  [[0,0],[0,1],[1,0],[1,1]],
+  // T — 4 rotations
+  [[0,0],[0,1],[0,2],[1,1]],
+  [[0,1],[1,0],[1,1],[2,1]],
+  [[0,1],[1,0],[1,1],[1,2]],
+  [[0,0],[1,0],[1,1],[2,0]],
+  // S — 2 rotations
+  [[0,1],[0,2],[1,0],[1,1]],
+  [[0,0],[1,0],[1,1],[2,1]],
+  // Z — 2 rotations
+  [[0,0],[0,1],[1,1],[1,2]],
+  [[0,1],[1,0],[1,1],[2,0]],
+  // L — 4 rotations
+  [[0,0],[1,0],[2,0],[2,1]],
+  [[0,0],[0,1],[0,2],[1,0]],
+  [[0,0],[0,1],[1,1],[2,1]],
+  [[0,2],[1,0],[1,1],[1,2]],
+  // J — 4 rotations
+  [[0,1],[1,1],[2,0],[2,1]],
+  [[0,0],[1,0],[1,1],[1,2]],
+  [[0,0],[0,1],[1,0],[2,0]],
+  [[0,0],[0,1],[0,2],[1,2]],
+];
+
+const TETRIS_COLORS = [
+  { base: '#d4813a', light: '#f0a060', dark: '#8a4e1e' },
+  { base: '#7c3aed', light: '#a855f7', dark: '#4c1d95' },
+  { base: '#dc2626', light: '#f87171', dark: '#7f1d1d' },
+  { base: '#2563eb', light: '#60a5fa', dark: '#1e3a8a' },
+  { base: '#16a34a', light: '#4ade80', dark: '#14532d' },
+  { base: '#ca8a04', light: '#fde047', dark: '#713f12' },
+  { base: '#db2777', light: '#f472b6', dark: '#831843' },
+];
+
+const COLS = 7;
+const CELL = 40;
+const BEVEL = 4;
+
+function buildTetrisGrid(items) {
+  // grid[row][col] = itemId | null
+  const grid = Array.from({ length: 40 }, () => Array(COLS).fill(null));
+  const placements = []; // { item, cells: [[r,c],...], color }
+
+  const isOccupied = (r, c) => r < 0 || r >= 40 || c < 0 || c >= COLS || grid[r][c] !== null;
+
+  const canPlace = (shape, startR, startC) =>
+    shape.every(([dr, dc]) => !isOccupied(startR + dr, startC + dc));
+
+  const drop = (shape, startC) => {
+    // Find lowest valid row
+    for (let r = 39; r >= 0; r--) {
+      if (canPlace(shape, r - Math.max(...shape.map(([dr]) => dr)), startC)) {
+        const topR = r - Math.max(...shape.map(([dr]) => dr));
+        if (topR >= 0) return topR;
+      }
+    }
+    return 0;
+  };
+
+    items.forEach((item, idx) => {
+    const shape = TETRIS_SHAPES[item.id % TETRIS_SHAPES.length];
+    const color = TETRIS_COLORS[item.id % TETRIS_COLORS.length];
+    
+    // Try columns left to right, find best fit
+    let bestR = -1, bestC = 0, bestHeight = -1;
+    for (let c = 0; c <= COLS - 1; c++) {
+      const maxDC = Math.max(...shape.map(([,dc]) => dc));
+      if (c + maxDC > COLS - 1) continue;
+      if (canPlace(shape, 0, c)) {
+        const topR = drop(shape, c);
+        if (topR > bestHeight) { bestHeight = topR; bestC = c; bestR = topR; }
+      }
+    }
+    if (bestR < 0) bestR = 0;
+    
+    const cells = shape.map(([dr, dc]) => [bestR + dr, bestC + dc]);
+    cells.forEach(([r, c]) => { if (r >= 0 && r < 40 && c >= 0 && c < COLS) grid[r][c] = item.id; });
+    placements.push({ item, cells, color });
+  });
+
+  // Find used rows
+  const usedRows = new Set();
+  placements.forEach(p => p.cells.forEach(([r]) => usedRows.add(r)));
+  const maxRow = usedRows.size > 0 ? Math.max(...usedRows) : 4;
+
+  return { grid, placements, maxRow };
+}
+
+function ArchiveScreen({ newEntry, onNew }) {
+  const [items, setItems] = useState(SAMPLE_ARCHIVE);
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  useEffect(() => {
+    if (newEntry) {
+      setTimeout(() => {
+        setItems(prev => [{
+          id: Date.now() % 1000, task: newEntry.task, text: newEntry.text,
+          date: 'Today',
+        }, ...prev]);
+      }, 100);
+    }
+  }, [newEntry]);
+
+  const { grid, placements, maxRow } = buildTetrisGrid(items);
+  const displayRows = maxRow + 2;
+
+  // cell -> item lookup
+  const cellToItem = {};
+  placements.forEach(p => {
+    const key = p.cells.map(([r,c]) => `${r},${c}`).join('|');
+    p.cells.forEach(([r,c]) => { cellToItem[`${r},${c}`] = p; });
+  });
+
+  const rendered = new Set();
+
+  return (
+    <Screen>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div style={{ padding: '52px 24px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <Tag color="oklch(0.72 0.16 155)">Archive</Tag>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 10, marginBottom: 2 }}>Your stack</h2>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tap a piece to see details</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)' }}>{placements.length}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>completed</div>
+          </div>
+        </div>
+
+        {/* tetris board */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 8px' }}>
+          <div style={{
+            background: '#0a0806',
+            border: '2px solid #2a2420',
+            borderRadius: 6,
+            overflow: 'hidden',
+            display: 'grid',
+            gridTemplateColumns: `repeat(${COLS}, ${CELL}px)`,
+            gridTemplateRows: `repeat(${displayRows}, ${CELL}px)`,
+            gap: 2,
+            padding: 2,
+          }}>
+            {Array.from({ length: displayRows }, (_, rowIdx) =>
+              Array.from({ length: COLS }, (_, colIdx) => {
+                const r = maxRow + 1 - rowIdx;
+                const key = `${r},${colIdx}`;
+                const placement = cellToItem[key];
+                const alreadyRendered = rendered.has(key);
+                if (placement && !alreadyRendered) {
+                  placement.cells.forEach(([pr, pc]) => rendered.add(`${pr},${pc}`));
+                }
+                const c = placement ? placement.color : null;
+                return (
+                  <div
+                    key={`${rowIdx}-${colIdx}`}
+                    onClick={() => placement && setSelectedItem(placement.item)}
+                    style={{
+                      width: CELL, height: CELL,
+                      background: c ? c.base : 'transparent',
+                      boxShadow: c ? `inset ${BEVEL}px ${BEVEL}px 0 ${c.light}, inset -${BEVEL}px -${BEVEL}px 0 ${c.dark}` : 'none',
+                      cursor: placement ? 'pointer' : 'default',
+                      transition: 'filter 0.1s',
+                    }}
+                    onMouseEnter={e => { if (c) e.currentTarget.style.filter = 'brightness(1.15)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
+                  />
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        <div style={{ padding: '12px 20px 32px' }}>
+          <Btn onClick={onNew} style={{ width: '100%', padding: '17px' }}>
+            + Do another one today
+          </Btn>
+        </div>
+      </div>
+
+      {/* detail modal */}
+      {selectedItem && (
+        <div onClick={() => setSelectedItem(null)} style={{
+          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'flex-end', borderRadius: 40,
+          animation: 'fadeIn 0.2s ease', zIndex: 100,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', background: 'var(--surface)', borderRadius: '24px 24px 0 0',
+            padding: '24px 24px 40px', animation: 'fadeUp 0.25s ease',
+            borderTop: `4px solid ${TETRIS_COLORS[selectedItem.id % TETRIS_COLORS.length].base}`,
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--border)', margin: '0 auto 20px' }}/>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{selectedItem.date}</div>
+            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{selectedItem.task}</h3>
+            {selectedItem.text && (
+              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                "{selectedItem.text}"
+              </p>
+            )}
+            <button onClick={() => setSelectedItem(null)} style={{
+              marginTop: 20, width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: '12px', color: 'var(--text-muted)', cursor: 'pointer',
+              fontSize: 14, fontFamily: 'var(--font)',
+            }}>Close</button>
+          </div>
+        </div>
+      )}
+    </Screen>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────
+function App() {
+  const { TweaksPanel, useTweaks } = window;
+  const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [screen, setScreen] = useState('input'); // input | loading | steps | timer | completion | archive
+  const [task, setTask] = useState('');
+  const [steps, setSteps] = useState([]);
+  const [archiveEntry, setArchiveEntry] = useState(null);
+
+  // apply accent color from tweaks
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', tweaks.accentColor);
+  }, [tweaks.accentColor]);
+
+  const go = s => setScreen(s);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 20, background: 'var(--bg)' }}>
+      {screen === 'input' && <InputScreen onNext={t => { setTask(t); go('loading'); }} />}
+      {screen === 'loading' && <LoadingScreen task={task} onNext={() => go('steps')} />}
+      {screen === 'steps' && <StepsScreen task={task} onNext={s => { setSteps(s); go('timer'); }} />}
+      {screen === 'timer' && <TimerScreen steps={steps} presenceCount={tweaks.presenceCount} onDone={() => go('completion')} />}
+      {screen === 'completion' && <CompletionScreen task={task} onArchive={entry => { setArchiveEntry(entry); go('archive'); }} />}
+      {screen === 'archive' && <ArchiveScreen newEntry={archiveEntry} onNew={() => { setTask(''); setSteps([]); setArchiveEntry(null); go('input'); }} />}
+
+      <TweaksPanel tweaks={tweaks} setTweak={setTweak}>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: 6 }}>Jump to screen</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {['input','loading','steps','timer','completion','archive'].map(s => (
+              <button key={s} onClick={() => go(s)} style={{
+                background: screen === s ? 'var(--accent)' : 'rgba(255,255,255,0.08)',
+                border: 'none', borderRadius: 6, padding: '5px 10px',
+                color: screen === s ? '#16130f' : 'rgba(255,255,255,0.6)',
+                fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)',
+              }}>{s}</button>
+            ))}
+          </div>
+        </div>
+        <window.TweakColor id="accentColor" label="Accent color" tweaks={tweaks} setTweak={setTweak} />
+        <window.TweakNumber id="presenceCount" label="People working now" tweaks={tweaks} setTweak={setTweak} min={10} max={9999} />
+        <window.TweakNumber id="timerMinutes" label="Default timer (min)" tweaks={tweaks} setTweak={setTweak} min={1} max={60} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
