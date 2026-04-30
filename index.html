@@ -830,18 +830,15 @@ const TETRIS_SHAPES = [
 ];
 
 const TETRIS_COLORS = [
-  { base: '#d4813a', light: '#f0a060', dark: '#8a4e1e' },
-  { base: '#7c3aed', light: '#a855f7', dark: '#4c1d95' },
-  { base: '#dc2626', light: '#f87171', dark: '#7f1d1d' },
-  { base: '#2563eb', light: '#60a5fa', dark: '#1e3a8a' },
-  { base: '#16a34a', light: '#4ade80', dark: '#14532d' },
-  { base: '#ca8a04', light: '#fde047', dark: '#713f12' },
-  { base: '#db2777', light: '#f472b6', dark: '#831843' },
+  { base: '#d4813a' }, // orange
+  { base: '#16a34a' }, // green
+  { base: '#6b6b6b' }, // gray
+  { base: '#f0ebe4' }, // off-white
 ];
 
 const COLS = 7;
 const CELL = 40;
-const BEVEL = 4;
+const BOARD_ROWS = 12; // visible rows in the archive board
 
 function buildTetrisGrid(items) {
   const ROWS = 60;
@@ -998,28 +995,21 @@ function ArchiveScreen({ newEntry, onNew }) {
           <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', cursor: weekOffset === 0 ? 'default' : 'pointer', color: weekOffset === 0 ? 'var(--border)' : 'var(--text-muted)', fontSize: 13 }}>→</button>
         </div>
 
-        {/* tetris board */}
+        {/* tetris board — fixed height, pieces stack from the bottom */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 8px' }}>
           <div style={{
-            background: '#0a0806',
-            border: '2px solid #2a2420',
-            borderRadius: 6,
-            overflow: 'hidden',
             display: 'grid',
             gridTemplateColumns: `repeat(${COLS}, ${CELL}px)`,
-            gridTemplateRows: `repeat(${displayRows}, ${CELL}px)`,
+            gridTemplateRows: `repeat(${BOARD_ROWS}, ${CELL}px)`,
             gap: 2,
-            padding: 2,
           }}>
-            {Array.from({ length: displayRows }, (_, rowIdx) =>
+            {Array.from({ length: BOARD_ROWS }, (_, rowIdx) =>
               Array.from({ length: COLS }, (_, colIdx) => {
-                const r = maxRow + 1 - rowIdx;
+                // rowIdx 0 = top of visible board; bottom row = BOARD_ROWS-1
+                // Map so the lowest placement row sits at the bottom.
+                const r = maxRow - (BOARD_ROWS - 1 - rowIdx);
                 const key = `${r},${colIdx}`;
                 const placement = cellToItem[key];
-                const alreadyRendered = rendered.has(key);
-                if (placement && !alreadyRendered) {
-                  placement.cells.forEach(([pr, pc]) => rendered.add(`${pr},${pc}`));
-                }
                 const c = placement ? placement.color : null;
                 return (
                   <div
@@ -1028,12 +1018,11 @@ function ArchiveScreen({ newEntry, onNew }) {
                     style={{
                       width: CELL, height: CELL,
                       background: c ? c.base : 'transparent',
-                      boxShadow: c ? `inset ${BEVEL}px ${BEVEL}px 0 ${c.light}, inset -${BEVEL}px -${BEVEL}px 0 ${c.dark}` : 'none',
                       cursor: placement ? 'pointer' : 'default',
-                      transition: 'filter 0.1s',
+                      transition: 'opacity 0.1s',
                     }}
-                    onMouseEnter={e => { if (c) e.currentTarget.style.filter = 'brightness(1.15)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.filter = ''; }}
+                    onMouseEnter={e => { if (c) e.currentTarget.style.opacity = '0.85'; }}
+                    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
                   />
                 );
               })
