@@ -459,7 +459,7 @@ function StepsScreen({ task, stepsData, onNext }) {
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.title}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.35, wordBreak: 'break-word' }}>{step.title}</div>
                     )}
                   </div>
                   {editingIdx === si ? (
