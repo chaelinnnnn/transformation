@@ -31,10 +31,8 @@
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
   @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes stackIn { from { opacity: 0; transform: translateY(24px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   @keyframes presence { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+  @keyframes drop { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 </head>
 <body>
@@ -56,7 +54,7 @@ function Btn({ children, onClick, variant = 'primary', style: s, disabled }) {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
     border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
     fontFamily: 'var(--font)', fontWeight: 600, fontSize: 15,
-    borderRadius: 12, padding: '14px 24px', transition: 'all 0.18s',
+    borderRadius: 12, padding: '0 20px', minHeight: 50, transition: 'all 0.18s',
     opacity: disabled ? 0.4 : 1,
   };
   const styles = {
@@ -77,10 +75,10 @@ function Btn({ children, onClick, variant = 'primary', style: s, disabled }) {
 function Screen({ children, style: s }) {
   return (
     <div style={{
-      width: 390, minHeight: 844, background: 'var(--bg)',
+      width: 275, minHeight: 812, background: 'var(--bg)',
       display: 'flex', flexDirection: 'column',
       position: 'relative', overflow: 'hidden',
-      borderRadius: 40, boxShadow: '0 40px 80px rgba(0,0,0,0.6)',
+      borderRadius: 34, boxShadow: '0 40px 80px rgba(0,0,0,0.6)',
       animation: 'fadeIn 0.3s ease', ...s
     }}>
       {children}
@@ -88,13 +86,14 @@ function Screen({ children, style: s }) {
   );
 }
 
-function Tag({ children, color = 'var(--accent)' }) {
+function Tag({ children, color = 'var(--accent)', style: s }) {
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center',
-      padding: '3px 10px', borderRadius: 99,
+      padding: '4px 10px', borderRadius: 99,
       background: color + '18', color,
       fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
+      ...s,
     }}>{children}</span>
   );
 }
@@ -111,19 +110,17 @@ function InputScreen({ onNext }) {
   }, []);
   return (
     <Screen>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '72px 28px 40px' }}>
-        {/* top */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px 20px 32px' }}>
         <div style={{ animation: 'fadeUp 0.5s ease' }}>
-          <h1 style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.25, color: 'var(--text)', marginBottom: 10 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.25, color: 'var(--text)', marginBottom: 10 }}>
             Today,<br />
             <span style={{ color: 'var(--accent)' }}>just one thing.</span>
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 36 }}>
-            It doesn't have to be big. What's one task<br />or goal you want to start today?
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 28 }}>
+            It doesn't have to be big. What's one task or goal you want to start today?
           </p>
         </div>
 
-        {/* input */}
         <div style={{ animation: 'fadeUp 0.5s 0.1s ease both' }}>
           <div style={{
             border: `1.5px solid ${focused ? 'var(--accent)' : 'var(--border)'}`,
@@ -138,19 +135,17 @@ function InputScreen({ onNext }) {
               placeholder={`e.g. ${examples[exIdx]}`}
               style={{
                 width: '100%', minHeight: 100, background: 'transparent', border: 'none', outline: 'none',
-                color: 'var(--text)', fontSize: 16, fontFamily: 'var(--font)', lineHeight: 1.6,
-                resize: 'none', padding: '14px 16px',
+                color: 'var(--text)', fontSize: 15, fontFamily: 'var(--font)', lineHeight: 1.6,
+                resize: 'none', padding: '12px 14px',
               }}
             />
           </div>
-
-
         </div>
 
         <div style={{ flex: 1 }} />
 
         <div style={{ animation: 'fadeUp 0.5s 0.2s ease both' }}>
-          <Btn onClick={() => onNext(task || 'Update my portfolio')} style={{ width: '100%', padding: '17px' }}>
+          <Btn onClick={() => onNext(task || 'Update my portfolio')} style={{ width: '100%' }}>
             Next →
           </Btn>
           <p style={{ textAlign: 'center', marginTop: 14, fontSize: 12, color: 'var(--text-muted)' }}>
@@ -174,39 +169,32 @@ function LoadingScreen({ task, onNext }) {
   }, []);
   return (
     <Screen>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-        <div style={{ width: 64, height: 64, marginBottom: 32, position: 'relative' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 28 }}>
+        <div style={{ width: 56, height: 56, marginBottom: 28, position: 'relative' }}>
           <div style={{
-            width: 64, height: 64, borderRadius: '50%',
+            width: 56, height: 56, borderRadius: '50%',
             border: '2px solid var(--border)',
             borderTopColor: 'var(--accent)',
             animation: 'spin 0.9s linear infinite',
           }} />
-          <div style={{
-            position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20,
-          }}></div>
         </div>
 
-        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '16px 20px', marginBottom: 28, maxWidth: 280, width: '100%' }}>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>Analyzing</p>
-          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>"{task}"</p>
+        <div style={{ background: 'var(--surface)', borderRadius: 14, padding: '14px 16px', marginBottom: 24, width: '100%' }}>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Analyzing</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-word' }}>"{task}"</p>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 280 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
           {phases.map((p, i) => (
             <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
+              display: 'flex', alignItems: 'center', gap: 10,
               opacity: phase >= i ? 1 : 0.2, transition: 'opacity 0.4s',
             }}>
               <div style={{
-                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
                 background: phase > i ? 'var(--accent)' : phase === i ? 'var(--accent-dim)' : 'var(--surface2)',
                 border: phase === i ? '1.5px solid var(--accent)' : '1.5px solid var(--border)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9,
-              }}>
-                {phase > i ? '' : ''}
-              </div>
+              }}/>
               <span style={{ fontSize: 13, color: phase >= i ? 'var(--text-soft)' : 'var(--text-muted)' }}>{p}</span>
             </div>
           ))}
@@ -218,102 +206,27 @@ function LoadingScreen({ task, onNext }) {
 
 // ── Screen 3: Steps ────────────────────────────────────────
 const STEPS_DATA = [
-  {
-    id: 1, label: 'Step 1', title: 'Just sit down for 5 min',
+  { id: 1, label: 'Step 1', title: 'Just sit down for 5 min',
     options: [
-      { id: 'a', text: 'Set a 5-min timer and just sit at your desk', time: '5 min', icon: '⏱' },
-      { id: 'b', text: 'Open your laptop and create one blank document', time: '3 min', icon: '' },
-      { id: 'c', text: 'Write down exactly one thing you can do right now', time: '2 min', icon: '' },
-    ]
-  },
-  {
-    id: 2, label: 'Step 2', title: 'Start with the easiest bit',
+      { id: 'a', text: 'Set a 5-min timer and just sit at your desk', time: '5 min' },
+      { id: 'b', text: 'Open your laptop and create one blank document', time: '3 min' },
+      { id: 'c', text: 'Write down exactly one thing you can do right now', time: '2 min' },
+    ] },
+  { id: 2, label: 'Step 2', title: 'Start with the easiest bit',
     options: [
-      { id: 'a', text: 'Open an existing file and review where you left off', time: '10 min', icon: '' },
-      { id: 'b', text: 'Find 3 references or examples on Google', time: '8 min', icon: '' },
-      { id: 'c', text: 'Sketch a quick outline or structure', time: '7 min', icon: '' },
-    ]
-  },
-  {
-    id: 3, label: 'Step 3', title: 'Finish one small piece',
+      { id: 'a', text: 'Open an existing file and review where you left off', time: '10 min' },
+      { id: 'b', text: 'Find 3 references or examples on Google', time: '8 min' },
+      { id: 'c', text: 'Sketch a quick outline or structure', time: '7 min' },
+    ] },
+  { id: 3, label: 'Step 3', title: 'Finish one small piece',
     options: [
-      { id: 'a', text: 'Bring just one section to a complete state', time: '20 min', icon: '' },
-      { id: 'b', text: 'Get the overall flow down, even as a rough draft', time: '25 min', icon: '' },
-      { id: 'c', text: 'Save it in a form you could show someone', time: '15 min', icon: '' },
-    ]
-  },
+      { id: 'a', text: 'Bring just one section to a complete state', time: '20 min' },
+      { id: 'b', text: 'Get the overall flow down, even as a rough draft', time: '25 min' },
+      { id: 'c', text: 'Save it in a form you could show someone', time: '15 min' },
+    ] },
 ];
 
-// ── Edit sub-screen component ─────────────────────────────
-function EditStepScreen({ step, stepIdx, stepsData, onSave, onBack }) {
-  const orig = stepsData.find(s => s.title === step.title) || stepsData[stepIdx] || stepsData[0];
-  const [localChosen, setLocalChosen] = useState(step.chosen);
-  const [localTime, setLocalTime] = useState(step.chosenTime || '');
-  const [localCustom, setLocalCustom] = useState(false);
-  const [localCustomText, setLocalCustomText] = useState('');
-
-  const saveEdit = () => {
-    const text = localCustom ? localCustomText.trim() : localChosen;
-    if (!text) return;
-    onSave(text, localCustom ? '?' : localTime);
-  };
-
-  return (
-    <Screen>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '56px 24px 32px' }}>
-        <button onClick={onBack} style={{
-          background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
-          fontFamily: 'var(--font)', fontSize: 13, textAlign: 'left', padding: '0 0 20px', display: 'flex', alignItems: 'center', gap: 6,
-        }}>← Back</button>
-        <Tag>Step {stepIdx + 1}</Tag>
-        <h2 style={{ fontSize: 20, fontWeight: 700, marginTop: 12, marginBottom: 4 }}>{step.title}</h2>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Pick how you want to tackle this, then save</p>
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {orig.options.map(opt => {
-            const active = !localCustom && localChosen === opt.text;
-            return (
-              <button key={opt.id} onClick={() => { setLocalCustom(false); setLocalChosen(opt.text); setLocalTime(opt.time); }}
-                style={{
-                  background: active ? 'var(--accent-dim)' : 'var(--surface)',
-                  border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                  borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'flex-start', gap: 12, textAlign: 'left', transition: 'all 0.15s',
-                }}>
-                <span style={{ fontSize: 20, flexShrink: 0, marginTop: 1 }}>{opt.icon}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, fontFamily: 'var(--font)', fontWeight: active ? 600 : 400 }}>{opt.text}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>~{opt.time}</div>
-                </div>
-                {active && <div style={{ color: 'var(--accent)', fontSize: 16, flexShrink: 0 }}></div>}
-              </button>
-            );
-          })}
-          {!localCustom ? (
-            <button onClick={() => { setLocalCustom(true); setLocalCustomText(''); }} style={{
-              background: 'transparent', border: '1.5px dashed var(--border)',
-              borderRadius: 12, padding: '13px 16px', cursor: 'pointer',
-              fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font)', textAlign: 'left',
-            }}>+ Write your own approach</button>
-          ) : (
-            <div style={{ border: '1.5px solid var(--accent)', borderRadius: 12, background: 'var(--accent-dim)', padding: '12px 16px' }}>
-              <input autoFocus value={localCustomText} onChange={e => setLocalCustomText(e.target.value)}
-                placeholder="Describe your own approach..."
-                style={{ background: 'transparent', border: 'none', outline: 'none', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', width: '100%' }} />
-            </div>
-          )}
-        </div>
-        <div style={{ paddingTop: 16 }}>
-          <Btn onClick={saveEdit} disabled={localCustom && !localCustomText.trim()} style={{ width: '100%', padding: '16px' }}>
-            Save changes 
-          </Btn>
-        </div>
-      </div>
-    </Screen>
-  );
-}
-
 function StepsScreen({ task, onNext }) {
-  // ALL hooks first — no conditional returns before this block
   const [steps, setSteps] = useState(
     STEPS_DATA.map(s => ({ ...s, chosen: s.options[0].text, chosenTime: s.options[0].time }))
   );
@@ -322,9 +235,6 @@ function StepsScreen({ task, onNext }) {
   const listRef = useRef(null);
   const cardRefs = useRef([]);
 
-  useEffect(() => {}, [steps.length]); // placeholder to keep hook count stable
-
-  const openEdit = idx => setEditingIdx(idx);
   const handleStart = () => onNext(steps);
 
   const getInsertIdx = (clientY) => {
@@ -379,8 +289,8 @@ function StepsScreen({ task, onNext }) {
     <div
       onPointerDown={e => onHandlePointerDown(e, idx)}
       onTouchStart={e => onHandlePointerDown(e, idx)}
-      style={{ color: 'var(--text-muted)', opacity: 0.45, flexShrink: 0, cursor: 'grab', display: 'flex', alignItems: 'center', padding: '4px 2px', touchAction: 'none' }}>
-      <svg width="16" height="14" viewBox="0 0 16 14" fill="none">
+      style={{ color: 'var(--text-muted)', opacity: 0.45, flexShrink: 0, cursor: 'grab', display: 'flex', alignItems: 'center', padding: '8px 4px', touchAction: 'none' }}>
+      <svg width="14" height="12" viewBox="0 0 16 14" fill="none">
         <rect y="0" width="16" height="2" rx="1" fill="currentColor"/>
         <rect y="6" width="16" height="2" rx="1" fill="currentColor"/>
         <rect y="12" width="16" height="2" rx="1" fill="currentColor"/>
@@ -393,20 +303,18 @@ function StepsScreen({ task, onNext }) {
   const insertAt = dragState ? dragState.insertAt : -1;
   const dy = dragState ? dragState.currentY - dragState.startY : 0;
 
-  // Main steps list
   return (
     <Screen>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{ padding: '56px 28px 16px' }}>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Your 3-step plan</h2>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Hold ≡ to reorder · Edit to change</p>
+        <div style={{ padding: '52px 20px 14px' }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Your 3-step plan</h2>
+          <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Hold ≡ to reorder · Edit to change</p>
         </div>
-        <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 20px', userSelect: 'none' }}>
+        <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '6px 16px', userSelect: 'none' }}>
           {steps.map((step, si) => {
-            const isMoved = isDragging && si !== draggedIdx;
             const shift = isDragging && si !== draggedIdx
               ? (si >= Math.min(draggedIdx, insertAt) && si <= Math.max(draggedIdx, insertAt)
-                  ? (insertAt < draggedIdx ? 72 : -72)
+                  ? (insertAt < draggedIdx ? 76 : -76)
                   : 0)
               : 0;
             return (
@@ -414,7 +322,7 @@ function StepsScreen({ task, onNext }) {
                 key={step.title + si}
                 ref={el => cardRefs.current[si] = el}
                 style={{
-                  marginBottom: 12,
+                  marginBottom: 10,
                   position: 'relative',
                   zIndex: si === draggedIdx ? 10 : 1,
                   transform: si === draggedIdx
@@ -426,14 +334,15 @@ function StepsScreen({ task, onNext }) {
                 <div style={{
                   background: 'var(--surface)',
                   border: `1.5px solid ${si === draggedIdx ? 'var(--accent)' : 'var(--border)'}`,
-                  borderRadius: 16, padding: '14px 16px',
-                  display: 'flex', alignItems: 'center', gap: 12,
+                  borderRadius: 14, padding: '10px 10px',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  minHeight: 64,
                   boxShadow: si === draggedIdx ? '0 12px 32px rgba(0,0,0,0.4)' : 'none',
                   transition: 'border-color 0.15s, box-shadow 0.15s',
                 }}>
                   <DragHandle idx={si} />
                   <div style={{
-                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                    width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
                     background: 'var(--accent)', color: '#16130f',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
                   }}>{si + 1}</div>
@@ -450,13 +359,13 @@ function StepsScreen({ task, onNext }) {
                         onChange={e => setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: e.target.value } : s))}
                         style={{
                           background: 'transparent', border: 'none', outline: 'none',
-                          color: 'var(--text)', fontSize: 14, fontWeight: 700,
+                          color: 'var(--text)', fontSize: 13, fontWeight: 700,
                           fontFamily: 'var(--font)', width: '100%', padding: 0,
                           borderBottom: '1.5px solid rgba(240,235,228,0.4)',
                         }}
                       />
                     ) : (
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>{step.title}</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{step.title}</div>
                     )}
                   </div>
                   {editingIdx === si ? (
@@ -464,17 +373,17 @@ function StepsScreen({ task, onNext }) {
                       onClick={e => { e.stopPropagation(); setEditingIdx(null); }}
                       style={{
                         flexShrink: 0, background: 'var(--accent)', border: 'none',
-                        borderRadius: 8, padding: '6px 12px', cursor: 'pointer',
-                        fontSize: 12, color: '#16130f', fontFamily: 'var(--font)', fontWeight: 700,
+                        borderRadius: 10, minHeight: 50, padding: '0 12px', cursor: 'pointer',
+                        fontSize: 15, color: '#16130f', fontFamily: 'var(--font)', fontWeight: 700,
                       }}>Done</button>
                   ) : (
                     <button
                       onClick={e => { e.stopPropagation(); setEditingIdx(si); }}
                       style={{
                         flexShrink: 0, background: 'var(--surface2)',
-                        border: '1px solid var(--border)', borderRadius: 8,
-                        padding: '6px 12px', cursor: 'pointer',
-                        fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600,
+                        border: '1px solid var(--border)', borderRadius: 10,
+                        minHeight: 50, padding: '0 12px', cursor: 'pointer',
+                        fontSize: 15, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600,
                       }}>Edit</button>
                   )}
                 </div>
@@ -482,8 +391,8 @@ function StepsScreen({ task, onNext }) {
             );
           })}
         </div>
-        <div style={{ padding: '12px 20px 32px' }}>
-          <Btn onClick={handleStart} style={{ width: '100%', padding: '17px' }}>
+        <div style={{ padding: '10px 16px 28px' }}>
+          <Btn onClick={handleStart} style={{ width: '100%' }}>
             Start with this plan →
           </Btn>
         </div>
@@ -520,17 +429,16 @@ function TimerScreen({ steps, presenceCount, onDone }) {
 
   const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
   const progress = 1 - secs / totalSecs;
-  const r = 80, circ = 2 * Math.PI * r;
+  const r = 72, circ = 2 * Math.PI * r;
 
   return (
     <Screen>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '52px 28px 36px' }}>
-        {/* step progress */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
-          {steps.map((s, i) => (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '48px 20px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 22 }}>
+          {safeSteps.map((s, i) => (
             <div key={i} style={{
               flex: 1, height: 3, borderRadius: 99,
-              background: i < stepIdx ? 'var(--accent)' : i === stepIdx ? 'var(--surface2)' : 'var(--surface2)',
+              background: i < stepIdx ? 'var(--accent)' : 'var(--surface2)',
               position: 'relative', overflow: 'hidden',
             }}>
               {i === stepIdx && (
@@ -543,47 +451,45 @@ function TimerScreen({ steps, presenceCount, onDone }) {
           ))}
         </div>
 
-        <Tag style={{ marginBottom: 12 }}>{step.label}</Tag>
-        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, marginTop: 8 }}>{step.title}</h2>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 32 }}>{step.chosen}</p>
+        <Tag>{step.label}</Tag>
+        <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>{step.title}</h2>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 22 }}>{step.chosen}</p>
 
-        {/* ambient presence */}
         <div style={{
-          background: 'var(--surface)', borderRadius: 14, padding: '12px 16px',
-          display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28,
+          background: 'var(--surface)', borderRadius: 12, padding: '10px 12px',
+          display: 'flex', alignItems: 'center', gap: 8, marginBottom: 22,
           border: '1px solid var(--border)',
         }}>
-          <div style={{ display: 'flex', gap: -4 }}>
-            {[...Array(5)].map((_, i) => (
+          <div style={{ display: 'flex', flexShrink: 0 }}>
+            {[...Array(4)].map((_, i) => (
               <div key={i} style={{
-                width: 20, height: 20, borderRadius: '50%',
+                width: 18, height: 18, borderRadius: '50%',
                 background: `oklch(0.72 0.16 ${55 + i * 18})`,
                 border: '2px solid var(--surface)',
-                marginLeft: i > 0 ? -6 : 0,
+                marginLeft: i > 0 ? -5 : 0,
                 animation: `presence 2s ${i * 0.3}s infinite`,
               }} />
             ))}
           </div>
-          <div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>
-              {presence + presenceDelta} people
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>
+              {presence + presenceDelta}
             </span>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}> working right now</span>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}> working now</span>
           </div>
-          <div style={{ marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%', background: '#4ade80', animation: 'pulse 2s infinite' }} />
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#4ade80', animation: 'pulse 2s infinite', flexShrink: 0 }} />
         </div>
 
-        {/* timer ring */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ position: 'relative', width: 200, height: 200 }}>
-            <svg width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
-              <circle cx="100" cy="100" r={r} fill="none" stroke="var(--surface2)" strokeWidth="6" />
-              <circle cx="100" cy="100" r={r} fill="none" stroke="var(--accent)" strokeWidth="6"
+          <div style={{ position: 'relative', width: 180, height: 180 }}>
+            <svg width="180" height="180" style={{ transform: 'rotate(-90deg)' }}>
+              <circle cx="90" cy="90" r={r} fill="none" stroke="var(--surface2)" strokeWidth="6" />
+              <circle cx="90" cy="90" r={r} fill="none" stroke="var(--accent)" strokeWidth="6"
                 strokeDasharray={circ} strokeDashoffset={circ * (1 - progress)}
                 strokeLinecap="round" style={{ transition: 'stroke-dashoffset 1s linear' }} />
             </svg>
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ fontSize: 38, fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px' }}>
+              <div style={{ fontSize: 34, fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-1px' }}>
                 {fmt(secs)}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
@@ -594,20 +500,18 @@ function TimerScreen({ steps, presenceCount, onDone }) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Btn onClick={() => setRunning(r => !r)} style={{ width: '100%', padding: '17px' }}>
+          <Btn onClick={() => setRunning(r => !r)} style={{ width: '100%' }}>
             {running ? '⏸ Pause' : (secs === totalSecs ? '▶ Start Timer' : '▶ Resume')}
           </Btn>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {stepIdx < safeSteps.length - 1 ? (
-              <Btn variant="ghost" onClick={() => { setStepIdx(i => i + 1); setSecs([5*60, 10*60, 20*60][stepIdx+1]); setRunning(false); }} style={{ flex: 1 }}>
-                Next Step
-              </Btn>
-            ) : (
-              <Btn variant="ghost" onClick={onDone} style={{ flex: 1 }}>
-                All done!
-              </Btn>
-            )}
-          </div>
+          {stepIdx < safeSteps.length - 1 ? (
+            <Btn variant="ghost" onClick={() => { setStepIdx(i => i + 1); setSecs([5*60, 10*60, 20*60][stepIdx+1]); setRunning(false); }} style={{ width: '100%' }}>
+              Next Step
+            </Btn>
+          ) : (
+            <Btn variant="ghost" onClick={onDone} style={{ width: '100%' }}>
+              All done!
+            </Btn>
+          )}
         </div>
       </div>
     </Screen>
@@ -617,7 +521,7 @@ function TimerScreen({ steps, presenceCount, onDone }) {
 // ── Screen 5: Completion / Verify ─────────────────────────
 function CompletionScreen({ task, onArchive }) {
   const [cameraOpen, setCameraOpen] = useState(false);
-  const [fakeCameraPhase, setFakeCameraPhase] = useState('preview'); // preview | captured
+  const [fakeCameraPhase, setFakeCameraPhase] = useState('preview');
   const [text, setText] = useState('');
   const [done, setDone] = useState(false);
   const fileRef = useRef();
@@ -627,7 +531,6 @@ function CompletionScreen({ task, onArchive }) {
   const takeFakePhoto = () => {
     setFakeCameraPhase('captured');
     setTimeout(() => {
-      // Use a placeholder gradient as "photo"
       setPhotoPreview('data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2c2720"/><stop offset="100%" stop-color="#16130f"/></linearGradient></defs><rect width="400" height="300" fill="url(#g)"/><text x="200" y="145" font-family="sans-serif" font-size="14" fill="rgba(240,235,228,0.3)" text-anchor="middle">Photo captured</text><text x="200" y="165" font-family="sans-serif" font-size="12" fill="rgba(240,235,228,0.2)" text-anchor="middle">${new Date().toLocaleTimeString()}</text></svg>`));
       setCameraOpen(false);
     }, 600);
@@ -636,31 +539,26 @@ function CompletionScreen({ task, onArchive }) {
   if (cameraOpen) return (
     <Screen>
       <div style={{ position: 'relative', width: '100%', height: '100%', background: '#000', display: 'flex', flexDirection: 'column' }}>
-        {/* fake viewfinder */}
         <div style={{ flex: 1, background: 'linear-gradient(135deg, #1a1714 0%, #0d0b09 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-          {/* grid lines */}
           <div style={{ position: 'absolute', inset: 0, opacity: 0.15 }}>
             <div style={{ position: 'absolute', left: '33%', top: 0, bottom: 0, borderLeft: '1px solid white' }}/>
             <div style={{ position: 'absolute', left: '66%', top: 0, bottom: 0, borderLeft: '1px solid white' }}/>
             <div style={{ position: 'absolute', top: '33%', left: 0, right: 0, borderTop: '1px solid white' }}/>
             <div style={{ position: 'absolute', top: '66%', left: 0, right: 0, borderTop: '1px solid white' }}/>
           </div>
-          {/* focus indicator */}
-          <div style={{ width: 80, height: 80, border: '1.5px solid var(--accent)', borderRadius: 8, opacity: 0.7 }}/>
+          <div style={{ width: 70, height: 70, border: '1.5px solid var(--accent)', borderRadius: 8, opacity: 0.7 }}/>
           {fakeCameraPhase === 'captured' && (
             <div style={{ position: 'absolute', inset: 0, background: 'white', animation: 'fadeIn 0.1s ease', opacity: 0 }}/>
           )}
-          {/* top bar */}
-          <div style={{ position: 'absolute', top: 56, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', padding: '0 24px' }}>
-            <button onClick={() => setCameraOpen(false)} style={{ background: 'rgba(0,0,0,0.4)', border: 'none', color: 'white', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: 16 }}>×</button>
-            <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: 99, padding: '6px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Proof shot</div>
-            <div style={{ width: 36 }}/>
+          <div style={{ position: 'absolute', top: 48, left: 0, right: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px' }}>
+            <button onClick={() => setCameraOpen(false)} style={{ background: 'rgba(0,0,0,0.4)', border: 'none', color: 'white', borderRadius: '50%', width: 50, height: 50, cursor: 'pointer', fontSize: 18, fontFamily: 'var(--font)' }}>×</button>
+            <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: 99, padding: '8px 14px', fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>Proof shot</div>
+            <div style={{ width: 50 }}/>
           </div>
         </div>
-        {/* shutter area */}
-        <div style={{ padding: '28px 0 48px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ padding: '24px 0 36px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <button onClick={takeFakePhoto} style={{
-            width: 72, height: 72, borderRadius: '50%',
+            width: 68, height: 68, borderRadius: '50%',
             background: 'white', border: '4px solid rgba(255,255,255,0.3)',
             cursor: 'pointer', transition: 'transform 0.1s',
             boxShadow: '0 0 0 3px rgba(255,255,255,0.15)',
@@ -688,16 +586,16 @@ function CompletionScreen({ task, onArchive }) {
 
   if (done) return (
     <Screen>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, gap: 20 }}>
-        <div style={{ animation: 'fadeUp 0.4s ease', width: 64, height: 64, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 28, gap: 18 }}>
+        <div style={{ animation: 'fadeUp 0.4s ease', width: 60, height: 60, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
             <path d="M5 12.5l5 5L20 7" stroke="#16130f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <h2 style={{ fontSize: 24, fontWeight: 700, textAlign: 'center', color: 'var(--text)', animation: 'fadeUp 0.4s 0.1s ease both' }}>
+        <h2 style={{ fontSize: 21, fontWeight: 700, textAlign: 'center', color: 'var(--text)', animation: 'fadeUp 0.4s 0.1s ease both' }}>
           Today's first action<br />is logged!
         </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', animation: 'fadeUp 0.4s 0.2s ease both' }}>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', animation: 'fadeUp 0.4s 0.2s ease both' }}>
           Adding to your archive...
         </p>
       </div>
@@ -706,17 +604,16 @@ function CompletionScreen({ task, onArchive }) {
 
   return (
     <Screen>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '64px 28px 36px' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '56px 20px 28px' }}>
         <div style={{ animation: 'fadeUp 0.4s ease' }}>
-          <h2 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
             You did it!
           </h2>
-          <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 32 }}>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 24, wordBreak: 'break-word' }}>
             "{task}"<br/>Want to log today's first action?
           </p>
         </div>
 
-        {/* combined log form — always visible */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, animation: 'fadeUp 0.4s 0.1s ease both' }}>
           <div>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Attach a photo <span style={{ color: 'var(--accent)', fontWeight: 600 }}>*</span></p>
@@ -724,20 +621,20 @@ function CompletionScreen({ task, onArchive }) {
             {!photoPreview ? (
               <button onClick={openCamera} style={{
                 background: 'var(--surface)', border: '1.5px dashed var(--border)',
-                borderRadius: 12, padding: '14px 16px', cursor: 'pointer', width: '100%',
-                display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font)',
+                borderRadius: 12, padding: '12px 14px', cursor: 'pointer', width: '100%',
+                minHeight: 60, display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'var(--font)',
               }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0 }}>
-                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M5 4l1-2h4l1 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--surface2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M5 4l1-2h4l1 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
                 </div>
                 <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tap to add a photo</span>
               </button>
             ) : (
               <div style={{ position: 'relative' }}>
-                <img src={photoPreview} style={{ width: '100%', borderRadius: 12, maxHeight: 150, objectFit: 'cover' }} alt="preview" />
+                <img src={photoPreview} style={{ width: '100%', borderRadius: 12, maxHeight: 130, objectFit: 'cover', display: 'block' }} alt="preview" />
                 <button onClick={() => setPhotoPreview(null)} style={{
-                  position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.55)',
-                  border: 'none', color: 'white', borderRadius: '50%', width: 26, height: 26, cursor: 'pointer', fontSize: 13,
+                  position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.6)',
+                  border: 'none', color: 'white', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 15, fontFamily: 'var(--font)',
                 }}>×</button>
               </div>
             )}
@@ -747,12 +644,12 @@ function CompletionScreen({ task, onArchive }) {
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
-              placeholder="e.g. Opened my laptop and outlined the first section. Easier than I expected."
+              placeholder="e.g. Opened my laptop and outlined the first section."
               style={{
                 background: 'var(--surface)', border: '1.5px solid var(--border)',
-                borderRadius: 12, padding: '14px', color: 'var(--text)',
+                borderRadius: 12, padding: '12px', color: 'var(--text)',
                 fontSize: 14, fontFamily: 'var(--font)', lineHeight: 1.6,
-                outline: 'none', resize: 'none', minHeight: 88, width: '100%',
+                outline: 'none', resize: 'none', minHeight: 80, width: '100%',
                 transition: 'border-color 0.2s',
               }}
               onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
@@ -763,13 +660,13 @@ function CompletionScreen({ task, onArchive }) {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <Btn onClick={handleVerify} disabled={!photoPreview} style={{ width: '100%', padding: '17px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <Btn onClick={handleVerify} disabled={!photoPreview} style={{ width: '100%' }}>
             Complete →
           </Btn>
           <button onClick={handleVerify} style={{
             background: 'transparent', border: 'none', color: 'var(--text-muted)',
-            fontSize: 13, cursor: 'pointer', padding: 8, fontFamily: 'var(--font)',
+            fontSize: 15, cursor: 'pointer', padding: 12, minHeight: 50, fontFamily: 'var(--font)',
           }}>Just mark it complete</button>
         </div>
       </div>
@@ -778,13 +675,10 @@ function CompletionScreen({ task, onArchive }) {
 }
 
 // ── Screen 6: Archive ──────────────────────────────────────
-// Today is Thu Apr 30, 2026. ISO dates so we can group by week.
 const SAMPLE_ARCHIVE = [
-  // This week (Mon Apr 27 – Sun May 3)
   { id: 1, task: 'Memorize 20 vocab words', text: 'Done faster than I thought.', date: '2026-04-27' },
   { id: 2, task: 'Read 10 pages', text: '10 pages turned into 30.', date: '2026-04-28' },
   { id: 3, task: 'Exercise for 5 min', text: '5 minutes became 20.', date: '2026-04-29' },
-  // Last week (Mon Apr 20 – Sun Apr 26)
   { id: 4, task: 'Write 200 words', text: 'Got into a flow state.', date: '2026-04-20' },
   { id: 5, task: 'Meditate 5 min', text: 'Harder than expected.', date: '2026-04-21' },
   { id: 6, task: 'Cold shower', text: null, date: '2026-04-22' },
@@ -792,111 +686,53 @@ const SAMPLE_ARCHIVE = [
   { id: 8, task: 'Walk 1km', text: 'Crisp morning.', date: '2026-04-24' },
   { id: 9, task: 'Drink 2L water', text: null, date: '2026-04-25' },
   { id: 10, task: 'Stretch 10 min', text: 'Tight shoulders eased up.', date: '2026-04-26' },
-  // 2 weeks ago (Mon Apr 13 – Sun Apr 19)
   { id: 11, task: 'Sketch one page', text: 'Loose lines today.', date: '2026-04-13' },
   { id: 12, task: 'No phone for 1hr', text: 'Surprisingly calm.', date: '2026-04-15' },
   { id: 13, task: 'Cook dinner', text: 'Pasta turned out great.', date: '2026-04-17' },
   { id: 14, task: 'Read essay', text: null, date: '2026-04-19' },
 ];
 
-// Tetris piece shapes (row,col offsets from top-left) — all 7 standard pieces + rotations
-const TETRIS_SHAPES = [
-  // I — 2 rotations
-  [[0,0],[0,1],[0,2],[0,3]],
-  [[0,0],[1,0],[2,0],[3,0]],
-  // O — 1 rotation
-  [[0,0],[0,1],[1,0],[1,1]],
-  // T — 4 rotations
-  [[0,0],[0,1],[0,2],[1,1]],
-  [[0,1],[1,0],[1,1],[2,1]],
-  [[0,1],[1,0],[1,1],[1,2]],
-  [[0,0],[1,0],[1,1],[2,0]],
-  // S — 2 rotations
-  [[0,1],[0,2],[1,0],[1,1]],
-  [[0,0],[1,0],[1,1],[2,1]],
-  // Z — 2 rotations
-  [[0,0],[0,1],[1,1],[1,2]],
-  [[0,1],[1,0],[1,1],[2,0]],
-  // L — 4 rotations
-  [[0,0],[1,0],[2,0],[2,1]],
-  [[0,0],[0,1],[0,2],[1,0]],
-  [[0,0],[0,1],[1,1],[2,1]],
-  [[0,2],[1,0],[1,1],[1,2]],
-  // J — 4 rotations
-  [[0,1],[1,1],[2,0],[2,1]],
-  [[0,0],[1,0],[1,1],[1,2]],
-  [[0,0],[0,1],[1,0],[2,0]],
-  [[0,0],[0,1],[0,2],[1,2]],
-];
+const CIRCLE_COLORS = ['#d4813a', '#16a34a', '#6b6b6b', '#f0ebe4', '#c95d3a', '#3a8fd4'];
+const CIRCLE_SIZES = [38, 48, 32, 54, 42, 36, 44];
 
-const TETRIS_COLORS = [
-  { base: '#d4813a' }, // orange
-  { base: '#16a34a' }, // green
-  { base: '#6b6b6b' }, // gray
-  { base: '#f0ebe4' }, // off-white
-];
+const BOARD_WIDTH = 235;
+const BOARD_HEIGHT = 360;
 
-const COLS = 7;
-const CELL = 40;
-const BOARD_ROWS = 12; // visible rows in the archive board
-
-function buildTetrisGrid(items) {
-  const ROWS = 60;
-  const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
-  const placements = [];
-
-  const cellFree = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS && grid[r][c] === null;
-  const canPlace = (shape, topR, startC) =>
-    shape.every(([dr, dc]) => cellFree(topR + dr, startC + dc));
-
+function packCircles(items) {
+  const placed = [];
   items.forEach((item) => {
-    const shape = TETRIS_SHAPES[item.id % TETRIS_SHAPES.length];
-    const color = TETRIS_COLORS[item.id % TETRIS_COLORS.length];
+    const r = CIRCLE_SIZES[item.id % CIRCLE_SIZES.length] / 2;
+    const color = CIRCLE_COLORS[item.id % CIRCLE_COLORS.length];
 
-    const maxDC = Math.max(...shape.map(([, dc]) => dc));
-
-    let bestR = -1, bestC = 0, bestScore = -Infinity;
-
-    for (let c = 0; c + maxDC < COLS; c++) {
-      // find deepest valid landing in this column (gravity drop)
-      let landed = -1;
-      for (let topR = 0; topR < ROWS; topR++) {
-        if (canPlace(shape, topR, c)) landed = topR;
-        else if (landed >= 0) break;
+    let bestX = -1, bestY = -1;
+    const samples = 80;
+    for (let i = 0; i <= samples; i++) {
+      const x = r + (BOARD_WIDTH - 2 * r) * (i / samples);
+      let y = BOARD_HEIGHT - r;
+      for (const p of placed) {
+        const dx = x - p.x;
+        const sumR = r + p.r;
+        if (Math.abs(dx) >= sumR) continue;
+        const dy = Math.sqrt(sumR * sumR - dx * dx);
+        const candidateY = p.y - dy;
+        if (candidateY < y) y = candidateY;
       }
-      if (landed < 0) continue;
-
-      // score = depth - holes_created (penalize gaps below the piece)
-      const cells = shape.map(([dr, dc]) => [landed + dr, c + dc]);
-      const colsUsed = [...new Set(cells.map(([, cc]) => cc))];
-      let holes = 0;
-      colsUsed.forEach(cc => {
-        const lowest = Math.max(...cells.filter(([, x]) => x === cc).map(([r]) => r));
-        for (let r = lowest + 1; r < ROWS; r++) {
-          if (grid[r][cc] === null) holes++;
-          else break;
-        }
-      });
-      const score = landed * 100 - holes * 30;
-      if (score > bestScore) { bestScore = score; bestR = landed; bestC = c; }
+      let valid = true;
+      for (const p of placed) {
+        const dx = x - p.x;
+        const dy = y - p.y;
+        const distSq = dx * dx + dy * dy;
+        const minDist = r + p.r - 0.5;
+        if (distSq < minDist * minDist) { valid = false; break; }
+      }
+      if (!valid) continue;
+      if (y > bestY) { bestY = y; bestX = x; }
     }
-
-    if (bestR < 0) return;
-
-    const cells = shape.map(([dr, dc]) => [bestR + dr, bestC + dc]);
-    cells.forEach(([r, c]) => { grid[r][c] = item.id; });
-    placements.push({ item, cells, color });
+    if (bestX >= 0) placed.push({ x: bestX, y: bestY, r, item, color });
   });
-
-  const usedRows = new Set();
-  placements.forEach(p => p.cells.forEach(([r]) => usedRows.add(r)));
-  const maxRow = usedRows.size > 0 ? Math.max(...usedRows) : 4;
-  const minRow = usedRows.size > 0 ? Math.min(...usedRows) : 0;
-
-  return { grid, placements, maxRow, minRow };
+  return placed;
 }
 
-// Get Monday 00:00 of the week containing the given date
 function getWeekStart(date) {
   const d = new Date(date);
   const day = d.getDay();
@@ -921,7 +757,7 @@ function formatItemDate(iso) {
 function ArchiveScreen({ newEntry, onNew }) {
   const [items, setItems] = useState(SAMPLE_ARCHIVE);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [weekOffset, setWeekOffset] = useState(0); // 0 = this week, 1 = last week, ...
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     if (newEntry) {
@@ -932,12 +768,11 @@ function ArchiveScreen({ newEntry, onNew }) {
           id: Date.now() % 1000, task: newEntry.task, text: newEntry.text,
           date: iso, photo: newEntry.photo,
         }, ...prev]);
-        setWeekOffset(0); // jump to current week to see new entry
+        setWeekOffset(0);
       }, 100);
     }
   }, [newEntry]);
 
-  // Compute current week window
   const thisWeekStart = getWeekStart(new Date());
   const viewWeekStart = new Date(thisWeekStart);
   viewWeekStart.setDate(viewWeekStart.getDate() - weekOffset * 7);
@@ -949,41 +784,35 @@ function ArchiveScreen({ newEntry, onNew }) {
     return d >= viewWeekStart && d < viewWeekEnd;
   });
 
-  // Check if older weeks have any items (to disable ← button when empty)
   const oldestItem = items.reduce((min, it) => {
     const d = new Date(it.date);
     return !min || d < min ? d : min;
   }, null);
   const maxOffset = oldestItem ? Math.floor((thisWeekStart - getWeekStart(oldestItem)) / (7 * 86400000)) : 0;
 
-  const { grid, placements, maxRow, minRow } = buildTetrisGrid(weekItems);
-  const displayRows = Math.max(maxRow - minRow + 2, 6);
-
-  // cell -> item lookup
-  const cellToItem = {};
-  placements.forEach(p => {
-    p.cells.forEach(([r,c]) => { cellToItem[`${r},${c}`] = p; });
-  });
-
-  const rendered = new Set();
+  const placed = packCircles(weekItems);
 
   return (
     <Screen>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div style={{ padding: '52px 24px 12px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div style={{ padding: '48px 18px 10px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 2 }}>Your stack</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Tap a piece to see details</p>
+            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>Your stack</h2>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Tap a circle to see details</p>
           </div>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--accent)' }}>{placements.length}</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>completed</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>{placed.length}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>completed</div>
           </div>
         </div>
 
-        {/* week selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 24px 12px' }}>
-          <button onClick={() => setWeekOffset(w => Math.min(maxOffset, w + 1))} disabled={weekOffset >= maxOffset} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', cursor: weekOffset >= maxOffset ? 'default' : 'pointer', color: weekOffset >= maxOffset ? 'var(--border)' : 'var(--text-muted)', fontSize: 13 }}>←</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 18px 10px' }}>
+          <button onClick={() => setWeekOffset(w => Math.min(maxOffset, w + 1))} disabled={weekOffset >= maxOffset} style={{
+            background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10,
+            minHeight: 50, minWidth: 50, padding: 0, cursor: weekOffset >= maxOffset ? 'default' : 'pointer',
+            color: weekOffset >= maxOffset ? 'var(--border)' : 'var(--text-muted)',
+            fontSize: 17, fontFamily: 'var(--font)'
+          }}>←</button>
           <div style={{ flex: 1, textAlign: 'center' }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)' }}>
               {weekOffset === 0 ? 'This week' : weekOffset === 1 ? 'Last week' : `${weekOffset} weeks ago`}
@@ -992,94 +821,76 @@ function ArchiveScreen({ newEntry, onNew }) {
               {formatWeekRange(viewWeekStart)}
             </div>
           </div>
-          <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} style={{ background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 8, padding: '6px 12px', cursor: weekOffset === 0 ? 'default' : 'pointer', color: weekOffset === 0 ? 'var(--border)' : 'var(--text-muted)', fontSize: 13 }}>→</button>
+          <button onClick={() => setWeekOffset(w => Math.max(0, w - 1))} disabled={weekOffset === 0} style={{
+            background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 10,
+            minHeight: 50, minWidth: 50, padding: 0, cursor: weekOffset === 0 ? 'default' : 'pointer',
+            color: weekOffset === 0 ? 'var(--border)' : 'var(--text-muted)',
+            fontSize: 17, fontFamily: 'var(--font)'
+          }}>→</button>
         </div>
 
-        {/* tetris board — pieces render as single bonded shapes */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 8px' }}>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 0 6px' }}>
           <div style={{
             position: 'relative',
-            width: COLS * CELL,
-            height: BOARD_ROWS * CELL,
+            width: BOARD_WIDTH,
+            height: BOARD_HEIGHT,
           }}>
-            {placements.map((p, idx) => {
-              // Compute bounding box of the piece in board coords
-              const rs = p.cells.map(([r]) => r);
-              const cs = p.cells.map(([, c]) => c);
-              const rMin = Math.min(...rs), rMax = Math.max(...rs);
-              const cMin = Math.min(...cs), cMax = Math.max(...cs);
-              // Translate piece rows to visible board rows (bottom-aligned)
-              const visibleTopRow = (BOARD_ROWS - 1) - (maxRow - rMin);
-              return (
-                <div
-                  key={idx}
-                  onClick={() => setSelectedItem(p.item)}
-                  style={{
-                    position: 'absolute',
-                    left: cMin * CELL,
-                    top: visibleTopRow * CELL,
-                    width: (cMax - cMin + 1) * CELL,
-                    height: (rMax - rMin + 1) * CELL,
-                    cursor: 'pointer',
-                    transition: 'opacity 0.12s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.opacity = '0.8'; }}
-                  onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-                >
-                  {/* fill each occupied cell within the bounding box */}
-                  {p.cells.map(([r, c], i) => (
-                    <div
-                      key={i}
-                      style={{
-                        position: 'absolute',
-                        left: (c - cMin) * CELL,
-                        top: (r - rMin) * CELL,
-                        width: CELL,
-                        height: CELL,
-                        background: p.color.base,
-                      }}
-                    />
-                  ))}
-                </div>
-              );
-            })}
+            {placed.map((p, idx) => (
+              <div
+                key={`${weekOffset}-${p.item.id}`}
+                onClick={() => setSelectedItem(p.item)}
+                style={{
+                  position: 'absolute',
+                  left: p.x - p.r,
+                  top: p.y - p.r,
+                  width: p.r * 2,
+                  height: p.r * 2,
+                  borderRadius: '50%',
+                  background: p.color,
+                  cursor: 'pointer',
+                  transition: 'transform 0.15s ease',
+                  animation: `drop 0.5s ${idx * 0.05}s ease both`,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.06)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              />
+            ))}
           </div>
         </div>
 
-        <div style={{ padding: '12px 20px 32px' }}>
-          <Btn onClick={onNew} style={{ width: '100%', padding: '17px' }}>
+        <div style={{ padding: '10px 16px 28px' }}>
+          <Btn onClick={onNew} style={{ width: '100%' }}>
             + Do another one today
           </Btn>
         </div>
       </div>
 
-      {/* detail modal */}
       {selectedItem && (
         <div onClick={() => setSelectedItem(null)} style={{
           position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'flex-end', borderRadius: 40,
+          display: 'flex', alignItems: 'flex-end', borderRadius: 34,
           animation: 'fadeIn 0.2s ease', zIndex: 100,
         }}>
           <div onClick={e => e.stopPropagation()} style={{
-            width: '100%', background: 'var(--surface)', borderRadius: '24px 24px 0 0',
-            padding: '24px 24px 40px', animation: 'fadeUp 0.25s ease',
-            borderTop: `4px solid ${TETRIS_COLORS[selectedItem.id % TETRIS_COLORS.length].base}`,
+            width: '100%', background: 'var(--surface)', borderRadius: '20px 20px 0 0',
+            padding: '20px 18px 28px', animation: 'fadeUp 0.25s ease',
+            borderTop: `4px solid ${CIRCLE_COLORS[selectedItem.id % CIRCLE_COLORS.length]}`,
           }}>
-            <div style={{ width: 36, height: 4, borderRadius: 99, background: 'var(--border)', margin: '0 auto 20px' }}/>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{formatItemDate(selectedItem.date)}</div>
-            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{selectedItem.task}</h3>
+            <div style={{ width: 32, height: 4, borderRadius: 99, background: 'var(--border)', margin: '0 auto 16px' }}/>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{formatItemDate(selectedItem.date)}</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, wordBreak: 'break-word' }}>{selectedItem.task}</h3>
             {selectedItem.photo && (
-              <img src={selectedItem.photo} alt="" style={{ width: '100%', borderRadius: 10, maxHeight: 180, objectFit: 'cover', marginBottom: 12 }} />
+              <img src={selectedItem.photo} alt="" style={{ width: '100%', borderRadius: 10, maxHeight: 150, objectFit: 'cover', marginBottom: 12, display: 'block' }} />
             )}
             {selectedItem.text && (
-              <p style={{ fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                 "{selectedItem.text}"
               </p>
             )}
             <button onClick={() => setSelectedItem(null)} style={{
-              marginTop: 20, width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
-              borderRadius: 12, padding: '12px', color: 'var(--text-muted)', cursor: 'pointer',
-              fontSize: 14, fontFamily: 'var(--font)',
+              marginTop: 18, width: '100%', background: 'var(--surface2)', border: '1px solid var(--border)',
+              borderRadius: 12, minHeight: 50, padding: 0, color: 'var(--text-muted)', cursor: 'pointer',
+              fontSize: 15, fontFamily: 'var(--font)',
             }}>Close</button>
           </div>
         </div>
@@ -1092,12 +903,11 @@ function ArchiveScreen({ newEntry, onNew }) {
 function App() {
   const { TweaksPanel, useTweaks } = window;
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [screen, setScreen] = useState('input'); // input | loading | steps | timer | completion | archive
+  const [screen, setScreen] = useState('input');
   const [task, setTask] = useState('');
   const [steps, setSteps] = useState([]);
   const [archiveEntry, setArchiveEntry] = useState(null);
 
-  // apply accent color from tweaks
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', tweaks.accentColor);
   }, [tweaks.accentColor]);
