@@ -158,15 +158,108 @@ function InputScreen({ onNext }) {
 }
 
 // ── Screen 2: AI Loading ───────────────────────────────────
+async function generateStepsFromAI(task) {
+  const prompt = `You are helping someone overcome procrastination by breaking a goal into 3 concrete, doable steps. The person feels stuck and needs the FIRST step to be embarrassingly small — something they can do in under 5 minutes without thinking.
+
+Their goal: "${task}"
+
+Generate exactly 3 steps. Each step has a short title (5-7 words, action-oriented) and 3 alternative options for HOW to do it. Each option has a text description (under 12 words) and a realistic time estimate.
+
+Step 1 should be tiny and frictionless (2-5 min activities — opening a file, sitting down, writing one sentence).
+Step 2 should build small momentum (5-10 min activities).
+Step 3 should produce something tangible (15-25 min activities).
+
+Respond with ONLY valid JSON, no markdown fences, no explanation:
+{
+  "steps": [
+    {
+      "title": "Short action-oriented title",
+      "options": [
+        { "text": "Specific way to do it", "time": "5 min" },
+        { "text": "Another approach", "time": "3 min" },
+        { "text": "Third approach", "time": "2 min" }
+      ]
+    },
+    { "title": "...", "options": [...] },
+    { "title": "...", "options": [...] }
+  ]
+}`;
+
+  // 20s timeout in case the API hangs
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+  let response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1000,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
+  const data = await response.json();
+  const text = data.content
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('')
+    .replace(/```json|```/g, '')
+    .trim();
+  const parsed = JSON.parse(text);
+
+  if (!parsed.steps || parsed.steps.length !== 3) throw new Error('Invalid step count');
+
+  // Normalize into the same shape the rest of the app expects
+  return parsed.steps.map((s, i) => ({
+    id: i + 1,
+    label: `Step ${i + 1}`,
+    title: s.title,
+    options: s.options.map((o, j) => ({
+      id: ['a', 'b', 'c'][j] || String(j),
+      text: o.text,
+      time: o.time,
+    })),
+  }));
+}
+
 function LoadingScreen({ task, onNext }) {
   const [phase, setPhase] = useState(0);
   const phases = ['Understanding your task...', 'Finding the smallest first step...', 'Building your custom steps...'];
+
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 1000);
-    const t2 = setTimeout(() => setPhase(2), 2100);
-    const t3 = setTimeout(() => onNext(), 3400);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    let cancelled = false;
+    const startTime = Date.now();
+    const MIN_DISPLAY_MS = 2400; // ensure phases get to play out even if API is fast
+
+    // animate phases regardless of API timing
+    const t1 = setTimeout(() => !cancelled && setPhase(1), 900);
+    const t2 = setTimeout(() => !cancelled && setPhase(2), 1900);
+
+    (async () => {
+      let steps = null;
+      try {
+        steps = await generateStepsFromAI(task);
+      } catch (err) {
+        console.warn('AI step generation failed, using fallback:', err);
+        steps = null; // signal fallback
+      }
+      // ensure loading screen shows long enough to feel deliberate
+      const elapsed = Date.now() - startTime;
+      const wait = Math.max(0, MIN_DISPLAY_MS - elapsed);
+      setTimeout(() => { if (!cancelled) onNext(steps); }, wait);
+    })();
+
+    return () => { cancelled = true; clearTimeout(t1); clearTimeout(t2); };
   }, []);
+
   return (
     <Screen>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
@@ -226,9 +319,10 @@ const STEPS_DATA = [
     ] },
 ];
 
-function StepsScreen({ task, onNext }) {
+function StepsScreen({ task, stepsData, onNext }) {
+  const baseSteps = (stepsData && stepsData.length > 0) ? stepsData : STEPS_DATA;
   const [steps, setSteps] = useState(
-    STEPS_DATA.map(s => ({ ...s, chosen: s.options[0].text, chosenTime: s.options[0].time }))
+    baseSteps.map(s => ({ ...s, chosen: s.options[0].text, chosenTime: s.options[0].time }))
   );
   const [editingIdx, setEditingIdx] = useState(null);
   const [dragState, setDragState] = useState(null);
@@ -984,7 +1078,8 @@ function App() {
   const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [screen, setScreen] = useState('input');
   const [task, setTask] = useState('');
-  const [steps, setSteps] = useState([]);
+  const [aiSteps, setAiSteps] = useState(null); // raw AI-generated (or null = fallback)
+  const [steps, setSteps] = useState([]);       // user-chosen steps headed to timer
   const [archiveEntry, setArchiveEntry] = useState(null);
 
   useEffect(() => {
@@ -995,12 +1090,12 @@ function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 20, background: 'var(--bg)' }}>
-      {screen === 'input' && <InputScreen onNext={t => { setTask(t); go('loading'); }} />}
-      {screen === 'loading' && <LoadingScreen task={task} onNext={() => go('steps')} />}
-      {screen === 'steps' && <StepsScreen task={task} onNext={s => { setSteps(s); go('timer'); }} />}
+      {screen === 'input' && <InputScreen onNext={t => { setTask(t); setAiSteps(null); go('loading'); }} />}
+      {screen === 'loading' && <LoadingScreen task={task} onNext={(generated) => { setAiSteps(generated); go('steps'); }} />}
+      {screen === 'steps' && <StepsScreen task={task} stepsData={aiSteps} onNext={s => { setSteps(s); go('timer'); }} />}
       {screen === 'timer' && <TimerScreen steps={steps} presenceCount={tweaks.presenceCount} onDone={() => go('completion')} />}
       {screen === 'completion' && <CompletionScreen task={task} onArchive={entry => { setArchiveEntry(entry); go('archive'); }} />}
-      {screen === 'archive' && <ArchiveScreen newEntry={archiveEntry} onNew={() => { setTask(''); setSteps([]); setArchiveEntry(null); go('input'); }} />}
+      {screen === 'archive' && <ArchiveScreen newEntry={archiveEntry} onNew={() => { setTask(''); setSteps([]); setAiSteps(null); setArchiveEntry(null); go('input'); }} />}
 
       <TweaksPanel tweaks={tweaks} setTweak={setTweak}>
         <div style={{ marginBottom: 16 }}>
