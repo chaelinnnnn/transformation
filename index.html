@@ -158,6 +158,168 @@ function InputScreen({ onNext }) {
 }
 
 // ── Screen 2: AI Loading ───────────────────────────────────
+// ── Environment detection ──────────────────────────────────
+// claude.ai artifact iframes can call the Anthropic API; static hosts (GitHub
+// Pages, file://) hit CORS. Detect host and skip the network call there.
+const IS_CLAUDE_ARTIFACT = (() => {
+  try {
+    const h = window.location.hostname;
+    if (h.includes('claude.ai') || h.includes('claudeusercontent') || h.includes('anthropic')) return true;
+    // Inside an iframe on localhost during dev preview also counts
+    if (h === 'localhost' && window.parent !== window) return true;
+    return false;
+  } catch { return false; }
+})();
+
+// ── Demo step library (used when AI isn't reachable) ──────
+// Keyword-matched step sets so the GitHub Pages demo still feels personalized.
+const DEMO_STEP_SETS = {
+  read: [
+    { title: 'Open the book to a specific page',
+      options: [
+        { text: 'Pick up the book and open it to where you left off', time: '1 min' },
+        { text: 'Place the book on your desk, open and visible', time: '2 min' },
+        { text: 'Read just the first paragraph aloud to yourself', time: '3 min' },
+      ]},
+    { title: 'Read for 10 minutes without distraction',
+      options: [
+        { text: 'Phone in another room, read until the timer ends', time: '10 min' },
+        { text: 'Read until you finish the current chapter section', time: '8 min' },
+        { text: 'Read 5 pages and underline anything that strikes you', time: '10 min' },
+      ]},
+    { title: 'Capture one takeaway in your own words',
+      options: [
+        { text: 'Write 2-3 sentences on what stuck with you most', time: '15 min' },
+        { text: 'Highlight 3 quotes and explain why each one matters', time: '20 min' },
+        { text: 'Continue reading another 20 minutes if engaged', time: '20 min' },
+      ]},
+  ],
+  write: [
+    { title: 'Open a blank document',
+      options: [
+        { text: 'Create a new doc with the title only', time: '2 min' },
+        { text: 'Write the first sentence, even if rough', time: '3 min' },
+        { text: 'Dump every related idea as a bulleted list', time: '5 min' },
+      ]},
+    { title: 'Outline the shape of what you want to say',
+      options: [
+        { text: 'Write 3-5 section headers in order', time: '8 min' },
+        { text: 'Sketch beginning, middle, end in one line each', time: '7 min' },
+        { text: 'List the questions your piece needs to answer', time: '10 min' },
+      ]},
+    { title: 'Draft the section you feel most ready to write',
+      options: [
+        { text: 'Fill out one section completely, ignore the rest', time: '20 min' },
+        { text: 'Write a rough full draft, no editing allowed', time: '25 min' },
+        { text: 'Polish the opening paragraph until it sings', time: '15 min' },
+      ]},
+  ],
+  exercise: [
+    { title: 'Put on your workout clothes',
+      options: [
+        { text: 'Change into workout clothes, even if you only stretch', time: '3 min' },
+        { text: 'Lace up shoes and step outside the front door', time: '2 min' },
+        { text: 'Roll out your mat and sit on it', time: '2 min' },
+      ]},
+    { title: 'Move your body for 10 minutes',
+      options: [
+        { text: 'Walk briskly around the block once', time: '10 min' },
+        { text: 'Do a 10-min beginner workout video', time: '10 min' },
+        { text: 'Stretch and do bodyweight basics: squats, pushups', time: '8 min' },
+      ]},
+    { title: 'Push a little past comfortable',
+      options: [
+        { text: 'Add a 15-min run or full workout circuit', time: '20 min' },
+        { text: "Try one new movement you haven't done before", time: '15 min' },
+        { text: 'Cool down with stretching and water', time: '15 min' },
+      ]},
+  ],
+  study: [
+    { title: 'Open your notes or textbook',
+      options: [
+        { text: 'Open the file or book to where you stopped', time: '2 min' },
+        { text: 'Reread your last paragraph of notes', time: '3 min' },
+        { text: "Write today's date and topic at the top of a new page", time: '2 min' },
+      ]},
+    { title: 'Review what you already half-know',
+      options: [
+        { text: 'Skim the chapter and mark unfamiliar terms', time: '10 min' },
+        { text: 'Make a quick concept map of the topic', time: '10 min' },
+        { text: 'Quiz yourself on the last lesson without looking', time: '8 min' },
+      ]},
+    { title: 'Tackle one new concept properly',
+      options: [
+        { text: 'Read one new section and take active notes', time: '25 min' },
+        { text: 'Work through 3-5 practice problems', time: '20 min' },
+        { text: 'Explain one concept aloud as if teaching someone', time: '15 min' },
+      ]},
+  ],
+  design: [
+    { title: 'Open your design tool with a fresh artboard',
+      options: [
+        { text: 'Open Figma and create a new file with the right canvas size', time: '3 min' },
+        { text: "Drop in your project's color tokens and fonts", time: '5 min' },
+        { text: "Pin 3 reference images to a moodboard", time: '5 min' },
+      ]},
+    { title: 'Sketch one rough version',
+      options: [
+        { text: 'Lay out a low-fi wireframe of the main screen', time: '10 min' },
+        { text: 'Try 3 quick variations of the layout side by side', time: '10 min' },
+        { text: 'Pick a color direction and apply it loosely', time: '8 min' },
+      ]},
+    { title: 'Refine one piece to portfolio-quality',
+      options: [
+        { text: 'Polish typography and spacing on the main screen', time: '25 min' },
+        { text: 'Add real content instead of lorem ipsum', time: '20 min' },
+        { text: "Export a clean shot you'd be proud to share", time: '15 min' },
+      ]},
+  ],
+  general: [
+    { title: 'Lower the bar to almost nothing',
+      options: [
+        { text: 'Set a 5-min timer and just start, badly', time: '5 min' },
+        { text: 'Open whatever tool or file you need, nothing else', time: '2 min' },
+        { text: 'Write down the very first action on paper', time: '3 min' },
+      ]},
+    { title: 'Build a tiny piece of momentum',
+      options: [
+        { text: 'Spend 10 min on the easiest visible task', time: '10 min' },
+        { text: 'Find one example or reference to anchor on', time: '8 min' },
+        { text: "Sketch the rough shape of what you're making", time: '10 min' },
+      ]},
+    { title: 'Finish one thing, even if small',
+      options: [
+        { text: "Bring one piece to a state you'd show someone", time: '20 min' },
+        { text: 'Get a rough end-to-end version, ignore quality', time: '25 min' },
+        { text: 'Stop at a clear pause point and note where you are', time: '15 min' },
+      ]},
+  ],
+};
+
+function pickDemoSet(task) {
+  const t = (task || '').toLowerCase();
+  if (/\b(read|book|reading|chapter|article|paper)\b/.test(t)) return DEMO_STEP_SETS.read;
+  if (/\b(write|writing|essay|blog|post|draft|story|thesis)\b/.test(t)) return DEMO_STEP_SETS.write;
+  if (/\b(exercise|workout|run|gym|yoga|stretch|walk|jog)\b/.test(t)) return DEMO_STEP_SETS.exercise;
+  if (/\b(study|learn|review|memorize|practice|homework|class)\b/.test(t)) return DEMO_STEP_SETS.study;
+  if (/\b(design|figma|portfolio|sketch|ui|ux|wireframe|mockup|brand)\b/.test(t)) return DEMO_STEP_SETS.design;
+  return DEMO_STEP_SETS.general;
+}
+
+function buildDemoSteps(task) {
+  const set = pickDemoSet(task);
+  return set.map((s, i) => ({
+    id: i + 1,
+    label: `Step ${i + 1}`,
+    title: s.title,
+    options: s.options.map((o, j) => ({
+      id: ['a', 'b', 'c'][j] || String(j),
+      text: o.text,
+      time: o.time,
+    })),
+  }));
+}
+
 async function generateStepsFromAI(task) {
   const prompt = `You are helping someone overcome procrastination by breaking a goal into 3 concrete, doable steps. The person feels stuck and needs the FIRST step to be embarrassingly small — something they can do in under 5 minutes without thinking.
 
@@ -246,13 +408,21 @@ function LoadingScreen({ task, onNext }) {
     (async () => {
       let steps = null;
       let errorMsg = null;
-      try {
-        steps = await generateStepsFromAI(task);
-      } catch (err) {
-        console.warn('AI step generation failed, using fallback:', err);
-        errorMsg = err.message || String(err);
-        steps = null;
+
+      if (IS_CLAUDE_ARTIFACT) {
+        // Real AI call only inside claude.ai (CORS-safe)
+        try {
+          steps = await generateStepsFromAI(task);
+        } catch (err) {
+          console.warn('AI step generation failed, using demo:', err);
+          errorMsg = err.message || String(err);
+          steps = buildDemoSteps(task);
+        }
+      } else {
+        // GitHub Pages / static host: skip API entirely, use keyword-matched demo set
+        steps = buildDemoSteps(task);
       }
+
       const elapsed = Date.now() - startTime;
       const wait = Math.max(0, MIN_DISPLAY_MS - elapsed);
       setTimeout(() => { if (!cancelled) onNext(steps, errorMsg); }, wait);
@@ -405,17 +575,6 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
           <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Your 3-step plan</h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Hold ≡ to reorder · Edit to change</p>
         </div>
-        {aiError && (
-          <div style={{
-            margin: '0 20px 8px',
-            background: 'oklch(0.55 0.18 25 / 0.12)',
-            border: '1px solid oklch(0.65 0.18 25 / 0.3)',
-            borderRadius: 10, padding: '10px 12px',
-            fontSize: 12, color: 'oklch(0.78 0.14 25)', lineHeight: 1.5,
-          }}>
-            <strong style={{ fontWeight: 600 }}>Using sample plan.</strong> AI couldn't generate custom steps ({aiError}). Try again from start to retry.
-          </div>
-        )}
         <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 20px', userSelect: 'none' }}>
           {steps.map((step, si) => {
             const shift = isDragging && si !== draggedIdx
