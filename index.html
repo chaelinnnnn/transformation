@@ -196,7 +196,7 @@ Respond with ONLY valid JSON, no markdown fences, no explanation:
       headers: { "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -245,16 +245,17 @@ function LoadingScreen({ task, onNext }) {
 
     (async () => {
       let steps = null;
+      let errorMsg = null;
       try {
         steps = await generateStepsFromAI(task);
       } catch (err) {
         console.warn('AI step generation failed, using fallback:', err);
-        steps = null; // signal fallback
+        errorMsg = err.message || String(err);
+        steps = null;
       }
-      // ensure loading screen shows long enough to feel deliberate
       const elapsed = Date.now() - startTime;
       const wait = Math.max(0, MIN_DISPLAY_MS - elapsed);
-      setTimeout(() => { if (!cancelled) onNext(steps); }, wait);
+      setTimeout(() => { if (!cancelled) onNext(steps, errorMsg); }, wait);
     })();
 
     return () => { cancelled = true; clearTimeout(t1); clearTimeout(t2); };
@@ -319,106 +320,7 @@ const STEPS_DATA = [
     ] },
 ];
 
-// ── Edit step sub-screen ─────────────────────────────────
-// Shown when user taps Edit on a step card. Displays all 3 options for that
-// step in full (no truncation), plus a custom write-your-own option.
-function EditStepScreen({ step, stepIdx, onSave, onBack }) {
-  const [chosen, setChosen] = useState(step.chosen);
-  const [chosenTime, setChosenTime] = useState(step.chosenTime || step.options[0].time);
-  const [customMode, setCustomMode] = useState(false);
-  const [customText, setCustomText] = useState('');
-
-  const isCustomActive = customMode && customText.trim();
-  const canSave = customMode ? !!customText.trim() : !!chosen;
-
-  const handleSave = () => {
-    if (customMode) onSave(customText.trim(), '?');
-    else onSave(chosen, chosenTime);
-  };
-
-  return (
-    <Screen>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: '52px 20px 28px' }}>
-        <button onClick={onBack} style={{
-          background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer',
-          fontFamily: 'var(--font)', fontSize: 14, textAlign: 'left',
-          padding: '8px 0', minHeight: 50, display: 'flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-        }}>← Back</button>
-
-        <Tag style={{ alignSelf: 'flex-start', marginTop: 4 }}>Step {stepIdx + 1}</Tag>
-        <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 12, marginBottom: 6, lineHeight: 1.3, wordBreak: 'break-word' }}>{step.title}</h2>
-        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20 }}>Pick how you want to tackle this</p>
-
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10, paddingBottom: 8 }}>
-          {step.options.map(opt => {
-            const active = !customMode && chosen === opt.text;
-            return (
-              <button key={opt.id} onClick={() => { setCustomMode(false); setChosen(opt.text); setChosenTime(opt.time); }}
-                style={{
-                  background: active ? 'var(--accent-dim)' : 'var(--surface)',
-                  border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                  borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  textAlign: 'left', transition: 'all 0.15s', fontFamily: 'var(--font)',
-                  width: '100%',
-                }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Full option text — no nowrap, no ellipsis, wraps freely */}
-                  <div style={{
-                    fontSize: 15, color: 'var(--text)', lineHeight: 1.5,
-                    fontWeight: active ? 600 : 400,
-                    wordBreak: 'break-word', whiteSpace: 'normal',
-                  }}>{opt.text}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>~{opt.time}</div>
-                </div>
-                {active && (
-                  <div style={{
-                    flexShrink: 0, color: 'var(--accent)', fontSize: 18, lineHeight: 1, marginTop: 2,
-                  }}>✓</div>
-                )}
-              </button>
-            );
-          })}
-
-          {!customMode ? (
-            <button onClick={() => { setCustomMode(true); setCustomText(''); }} style={{
-              background: 'transparent', border: '1.5px dashed var(--border)',
-              borderRadius: 12, padding: '14px 16px', cursor: 'pointer',
-              fontSize: 14, color: 'var(--text-muted)', fontFamily: 'var(--font)',
-              textAlign: 'left', minHeight: 50, width: '100%',
-            }}>+ Write your own approach</button>
-          ) : (
-            <div style={{ border: '1.5px solid var(--accent)', borderRadius: 12, background: 'var(--accent-dim)', padding: '12px 14px' }}>
-              <textarea
-                autoFocus
-                value={customText}
-                onChange={e => setCustomText(e.target.value)}
-                placeholder="Describe your own approach..."
-                style={{
-                  background: 'transparent', border: 'none', outline: 'none',
-                  color: 'var(--text)', fontSize: 15, fontFamily: 'var(--font)',
-                  width: '100%', minHeight: 60, lineHeight: 1.5, resize: 'none',
-                }}
-              />
-              <button onClick={() => { setCustomMode(false); setCustomText(''); }} style={{
-                background: 'transparent', border: 'none', color: 'var(--text-muted)',
-                cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font)', padding: '4px 0',
-              }}>Cancel</button>
-            </div>
-          )}
-        </div>
-
-        <div style={{ paddingTop: 14 }}>
-          <Btn onClick={handleSave} disabled={!canSave} style={{ width: '100%' }}>
-            Save changes
-          </Btn>
-        </div>
-      </div>
-    </Screen>
-  );
-}
-
-function StepsScreen({ task, stepsData, onNext }) {
+function StepsScreen({ task, stepsData, aiError, onNext }) {
   const baseSteps = (stepsData && stepsData.length > 0) ? stepsData : STEPS_DATA;
   const [steps, setSteps] = useState(
     baseSteps.map(s => ({ ...s, chosen: s.options[0].text, chosenTime: s.options[0].time }))
@@ -429,11 +331,6 @@ function StepsScreen({ task, stepsData, onNext }) {
   const cardRefs = useRef([]);
 
   const handleStart = () => onNext(steps);
-
-  const saveEdit = (idx, newChosen, newTime) => {
-    setSteps(prev => prev.map((s, i) => i === idx ? { ...s, chosen: newChosen, chosenTime: newTime } : s));
-    setEditingIdx(null);
-  };
 
   const getInsertIdx = (clientY) => {
     if (!listRef.current) return 0;
@@ -501,19 +398,6 @@ function StepsScreen({ task, stepsData, onNext }) {
   const insertAt = dragState ? dragState.insertAt : -1;
   const dy = dragState ? dragState.currentY - dragState.startY : 0;
 
-  // Edit sub-screen: shows all options for the chosen step with no truncation
-  if (editingIdx !== null) {
-    const step = steps[editingIdx];
-    return (
-      <EditStepScreen
-        step={step}
-        stepIdx={editingIdx}
-        onSave={(text, time) => saveEdit(editingIdx, text, time)}
-        onBack={() => setEditingIdx(null)}
-      />
-    );
-  }
-
   return (
     <Screen>
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -521,6 +405,17 @@ function StepsScreen({ task, stepsData, onNext }) {
           <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Your 3-step plan</h2>
           <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Hold ≡ to reorder · Edit to change</p>
         </div>
+        {aiError && (
+          <div style={{
+            margin: '0 20px 8px',
+            background: 'oklch(0.55 0.18 25 / 0.12)',
+            border: '1px solid oklch(0.65 0.18 25 / 0.3)',
+            borderRadius: 10, padding: '10px 12px',
+            fontSize: 12, color: 'oklch(0.78 0.14 25)', lineHeight: 1.5,
+          }}>
+            <strong style={{ fontWeight: 600 }}>Using sample plan.</strong> AI couldn't generate custom steps ({aiError}). Try again from start to retry.
+          </div>
+        )}
         <div ref={listRef} style={{ flex: 1, overflowY: 'auto', padding: '8px 20px', userSelect: 'none' }}>
           {steps.map((step, si) => {
             const shift = isDragging && si !== draggedIdx
@@ -544,32 +439,93 @@ function StepsScreen({ task, stepsData, onNext }) {
                 }}>
                 <div style={{
                   background: 'var(--surface)',
-                  border: `1.5px solid ${si === draggedIdx ? 'var(--accent)' : 'var(--border)'}`,
-                  borderRadius: 16, padding: '14px 16px',
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                  minHeight: 64,
+                  border: `1.5px solid ${si === draggedIdx ? 'var(--accent)' : editingIdx === si ? 'var(--accent)' : 'var(--border)'}`,
+                  borderRadius: 16,
                   boxShadow: si === draggedIdx ? '0 12px 32px rgba(0,0,0,0.4)' : 'none',
                   transition: 'border-color 0.15s, box-shadow 0.15s',
+                  overflow: 'hidden',
                 }}>
-                  <DragHandle idx={si} />
+                  {/* Header row: drag handle, number, title/chosen, edit button */}
                   <div style={{
-                    width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
-                    background: 'var(--accent)', color: '#16130f',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
-                  }}>{si + 1}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Step {si + 1}</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.35, wordBreak: 'break-word', marginBottom: 4 }}>{step.title}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4, wordBreak: 'break-word' }}>{step.chosen}</div>
+                    padding: '14px 16px',
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    minHeight: 64,
+                  }}>
+                    <DragHandle idx={si} />
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%', flexShrink: 0,
+                      background: 'var(--accent)', color: '#16130f',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
+                    }}>{si + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Step {si + 1}</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.35, wordBreak: 'break-word', marginBottom: 4 }}>{step.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4, wordBreak: 'break-word' }}>{step.chosen}</div>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); setEditingIdx(editingIdx === si ? null : si); }}
+                      style={{
+                        flexShrink: 0,
+                        background: editingIdx === si ? 'var(--accent)' : 'var(--surface2)',
+                        border: editingIdx === si ? 'none' : '1px solid var(--border)',
+                        borderRadius: 10,
+                        minHeight: 50, padding: '0 12px', cursor: 'pointer',
+                        fontSize: 15,
+                        color: editingIdx === si ? '#16130f' : 'var(--text-muted)',
+                        fontFamily: 'var(--font)',
+                        fontWeight: editingIdx === si ? 700 : 600,
+                      }}>{editingIdx === si ? 'Done' : 'Edit'}</button>
                   </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); setEditingIdx(si); }}
-                    style={{
-                      flexShrink: 0, background: 'var(--surface2)',
-                      border: '1px solid var(--border)', borderRadius: 10,
-                      minHeight: 50, padding: '0 12px', cursor: 'pointer',
-                      fontSize: 15, color: 'var(--text-muted)', fontFamily: 'var(--font)', fontWeight: 600,
-                    }}>Edit</button>
+
+                  {/* Expanded options panel: shown only when this card is being edited */}
+                  {editingIdx === si && (
+                    <div style={{
+                      borderTop: '1px solid var(--border)',
+                      padding: '12px 16px 14px',
+                      display: 'flex', flexDirection: 'column', gap: 8,
+                      animation: 'fadeIn 0.18s ease',
+                    }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.04em' }}>
+                        PICK AN APPROACH
+                      </div>
+                      {step.options.map(opt => {
+                        const active = step.chosen === opt.text;
+                        return (
+                          <button key={opt.id}
+                            onClick={e => {
+                              e.stopPropagation();
+                              setSteps(prev => prev.map((s, i) =>
+                                i === si ? { ...s, chosen: opt.text, chosenTime: opt.time } : s
+                              ));
+                            }}
+                            style={{
+                              background: active ? 'var(--accent-dim)' : 'var(--surface2)',
+                              border: `1.5px solid ${active ? 'var(--accent)' : 'transparent'}`,
+                              borderRadius: 10, padding: '12px 14px',
+                              cursor: 'pointer', textAlign: 'left',
+                              display: 'flex', alignItems: 'flex-start', gap: 10,
+                              fontFamily: 'var(--font)', width: '100%',
+                              transition: 'all 0.15s',
+                            }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 14, color: 'var(--text)', lineHeight: 1.5,
+                                fontWeight: active ? 600 : 400,
+                                wordBreak: 'break-word', whiteSpace: 'normal',
+                              }}>{opt.text}</div>
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>~{opt.time}</div>
+                            </div>
+                            {active && (
+                              <div style={{
+                                flexShrink: 0, color: 'var(--accent)',
+                                fontSize: 16, lineHeight: 1, marginTop: 2,
+                              }}>✓</div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -1169,6 +1125,7 @@ function App() {
   const [screen, setScreen] = useState('input');
   const [task, setTask] = useState('');
   const [aiSteps, setAiSteps] = useState(null); // raw AI-generated (or null = fallback)
+  const [aiError, setAiError] = useState(null);  // error message if AI call failed
   const [steps, setSteps] = useState([]);       // user-chosen steps headed to timer
   const [archiveEntry, setArchiveEntry] = useState(null);
 
@@ -1180,12 +1137,12 @@ function App() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: 20, background: 'var(--bg)' }}>
-      {screen === 'input' && <InputScreen onNext={t => { setTask(t); setAiSteps(null); go('loading'); }} />}
-      {screen === 'loading' && <LoadingScreen task={task} onNext={(generated) => { setAiSteps(generated); go('steps'); }} />}
-      {screen === 'steps' && <StepsScreen task={task} stepsData={aiSteps} onNext={s => { setSteps(s); go('timer'); }} />}
+      {screen === 'input' && <InputScreen onNext={t => { setTask(t); setAiSteps(null); setAiError(null); go('loading'); }} />}
+      {screen === 'loading' && <LoadingScreen task={task} onNext={(generated, err) => { setAiSteps(generated); setAiError(err); go('steps'); }} />}
+      {screen === 'steps' && <StepsScreen task={task} stepsData={aiSteps} aiError={aiError} onNext={s => { setSteps(s); go('timer'); }} />}
       {screen === 'timer' && <TimerScreen steps={steps} presenceCount={tweaks.presenceCount} onDone={() => go('completion')} />}
       {screen === 'completion' && <CompletionScreen task={task} onArchive={entry => { setArchiveEntry(entry); go('archive'); }} />}
-      {screen === 'archive' && <ArchiveScreen newEntry={archiveEntry} onNew={() => { setTask(''); setSteps([]); setAiSteps(null); setArchiveEntry(null); go('input'); }} />}
+      {screen === 'archive' && <ArchiveScreen newEntry={archiveEntry} onNew={() => { setTask(''); setSteps([]); setAiSteps(null); setAiError(null); setArchiveEntry(null); go('input'); }} />}
 
       <TweaksPanel tweaks={tweaks} setTweak={setTweak}>
         <div style={{ marginBottom: 16 }}>
