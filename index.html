@@ -654,118 +654,42 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                       }}>{editingIdx === si ? 'Done' : 'Edit'}</button>
                   </div>
 
-                  {/* Inline edit panel: edit title, action text, and time directly */}
+                  {/* Inline edit panel: edit title only. Time is shown as info, not editable. */}
                   {editingIdx === si && (
                     <div style={{
                       borderTop: '1px solid var(--border)',
                       padding: '14px 16px 16px',
-                      display: 'flex', flexDirection: 'column', gap: 12,
+                      display: 'flex', flexDirection: 'column', gap: 10,
                       animation: 'fadeIn 0.18s ease',
                     }}>
-                      {/* Title field */}
-                      <div>
-                        <label style={{
-                          display: 'block', fontSize: 11, color: 'var(--text-muted)',
-                          marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
-                        }}>Step title</label>
-                        <input
-                          type="text"
-                          value={step.title}
-                          onChange={e => {
-                            const v = e.target.value;
-                            setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: v } : s));
-                          }}
-                          style={{
-                            width: '100%', background: 'var(--surface2)',
-                            border: '1.5px solid var(--border)', borderRadius: 10,
-                            padding: '12px 14px', color: 'var(--text)',
-                            fontSize: 15, fontFamily: 'var(--font)', fontWeight: 600,
-                            outline: 'none', minHeight: 50,
-                          }}
-                          onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
-                          onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
-                        />
-                      </div>
-
-                      {/* Action text field */}
-                      <div>
-                        <label style={{
-                          display: 'block', fontSize: 11, color: 'var(--text-muted)',
-                          marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
-                        }}>What you'll actually do</label>
-                        <textarea
-                          value={step.chosen}
-                          onChange={e => {
-                            const v = e.target.value;
-                            setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosen: v } : s));
-                          }}
-                          style={{
-                            width: '100%', background: 'var(--surface2)',
-                            border: '1.5px solid var(--border)', borderRadius: 10,
-                            padding: '12px 14px', color: 'var(--text)',
-                            fontSize: 14, fontFamily: 'var(--font)', lineHeight: 1.5,
-                            outline: 'none', resize: 'vertical', minHeight: 70,
-                          }}
-                          onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
-                          onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
-                        />
-                      </div>
-
-                      {/* Time field — minutes only, with stepper */}
-                      <div>
-                        <label style={{
-                          display: 'block', fontSize: 11, color: 'var(--text-muted)',
-                          marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
-                        }}>Duration (minutes)</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              const cur = parseTimeToSeconds(step.chosenTime) / 60;
-                              const next = Math.max(1, Math.round(cur - 1));
-                              setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosenTime: `${next} min` } : s));
-                            }}
-                            style={{
-                              width: 50, minHeight: 50,
-                              background: 'var(--surface2)', border: '1px solid var(--border)',
-                              borderRadius: 10, color: 'var(--text-soft)',
-                              fontSize: 20, cursor: 'pointer', fontFamily: 'var(--font)',
-                            }}>−</button>
-                          <input
-                            type="number"
-                            min="1"
-                            max="120"
-                            value={Math.round(parseTimeToSeconds(step.chosenTime) / 60)}
-                            onChange={e => {
-                              const n = Math.max(1, parseInt(e.target.value) || 1);
-                              setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosenTime: `${n} min` } : s));
-                            }}
-                            style={{
-                              flex: 1, background: 'var(--surface2)',
-                              border: '1.5px solid var(--border)', borderRadius: 10,
-                              padding: '0 14px', color: 'var(--text)',
-                              fontSize: 16, fontFamily: 'var(--font)', fontWeight: 700,
-                              outline: 'none', minHeight: 50, textAlign: 'center',
-                              fontVariantNumeric: 'tabular-nums',
-                            }}
-                            onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
-                            onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
-                          />
-                          <button
-                            onClick={e => {
-                              e.stopPropagation();
-                              const cur = parseTimeToSeconds(step.chosenTime) / 60;
-                              const next = Math.min(120, Math.round(cur + 1));
-                              setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosenTime: `${next} min` } : s));
-                            }}
-                            style={{
-                              width: 50, minHeight: 50,
-                              background: 'var(--surface2)', border: '1px solid var(--border)',
-                              borderRadius: 10, color: 'var(--text-soft)',
-                              fontSize: 20, cursor: 'pointer', fontFamily: 'var(--font)',
-                            }}>+</button>
-                        </div>
-                      </div>
+                      <label style={{
+                        display: 'block', fontSize: 11, color: 'var(--text-muted)',
+                        letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
+                      }}>Edit step title</label>
+                      <textarea
+                        autoFocus
+                        value={step.title}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: v } : s));
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingIdx(null); }
+                          if (e.key === 'Escape') setEditingIdx(null);
+                        }}
+                        style={{
+                          width: '100%', background: 'var(--surface2)',
+                          border: '1.5px solid var(--border)', borderRadius: 10,
+                          padding: '12px 14px', color: 'var(--text)',
+                          fontSize: 15, fontFamily: 'var(--font)', fontWeight: 600, lineHeight: 1.4,
+                          outline: 'none', resize: 'none', minHeight: 60,
+                        }}
+                        onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
+                        onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
+                      />
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
+                        This step is timed for <strong style={{ color: 'var(--accent)', fontWeight: 600 }}>~{step.chosenTime}</strong>. The timer will run for that duration when you start.
+                      </p>
                     </div>
                   )}
                 </div>
