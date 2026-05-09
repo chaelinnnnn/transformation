@@ -505,7 +505,10 @@ const STEPS_DATA = [
 // Uncontrolled title editor — React doesn't re-set the textarea value during
 // typing, so cursor position and IME composition stay stable. Parent state is
 // updated on blur / Enter / Escape via the onCommit callback.
-function TitleEditor({ initial, onCommit, onDone }) {
+// Wrapped in React.memo so even if the parent re-renders for any reason, this
+// component's textarea is not touched (props are referentially stable enough,
+// and we never re-set defaultValue).
+const TitleEditor = React.memo(function TitleEditor({ initial, onCommit, onDone }) {
   const ref = useRef(null);
   const commit = () => {
     if (ref.current) onCommit(ref.current.value);
@@ -537,7 +540,7 @@ function TitleEditor({ initial, onCommit, onDone }) {
       }}
     />
   );
-}
+}, () => true); // never re-render once mounted
 
 function StepsScreen({ task, stepsData, aiError, onNext }) {
   const baseSteps = (stepsData && stepsData.length > 0) ? stepsData : STEPS_DATA;
@@ -633,7 +636,7 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
               : 0;
             return (
               <div
-                key={step.title + si}
+                key={step.id}
                 ref={el => cardRefs.current[si] = el}
                 style={{
                   marginBottom: 10,
@@ -642,8 +645,8 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                   transform: si === draggedIdx
                     ? `translateY(${dy}px) scale(1.02)`
                     : `translateY(${shift}px)`,
-                  transition: si === draggedIdx ? 'box-shadow 0.15s' : 'transform 0.2s cubic-bezier(0.25,0.46,0.45,0.94)',
-                  animation: !isDragging ? `fadeUp 0.4s ${si * 0.08}s ease both` : 'none',
+                  transition: si === draggedIdx ? 'box-shadow 0.15s' : (editingIdx === si ? 'none' : 'transform 0.2s cubic-bezier(0.25,0.46,0.45,0.94)'),
+                  animation: (!isDragging && editingIdx === null) ? `fadeUp 0.4s ${si * 0.08}s ease both` : 'none',
                 }}>
                 <div style={{
                   background: 'var(--surface)',
