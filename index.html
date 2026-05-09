@@ -655,12 +655,8 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                             padding: '2px 0', color: 'var(--text)',
                             fontSize: 14, fontFamily: 'var(--font)', fontWeight: 700,
                             lineHeight: 1.35, outline: 'none', resize: 'none',
-                            marginBottom: 4, overflow: 'hidden',
-                          }}
-                          onInput={e => {
-                            // auto-grow to fit content
-                            e.target.style.height = 'auto';
-                            e.target.style.height = e.target.scrollHeight + 'px';
+                            marginBottom: 4,
+                            display: 'block',
                           }}
                         />
                       ) : (
