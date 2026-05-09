@@ -502,6 +502,43 @@ const STEPS_DATA = [
     ] },
 ];
 
+// Uncontrolled title editor — React doesn't re-set the textarea value during
+// typing, so cursor position and IME composition stay stable. Parent state is
+// updated on blur / Enter / Escape via the onCommit callback.
+function TitleEditor({ initial, onCommit, onDone }) {
+  const ref = useRef(null);
+  const commit = () => {
+    if (ref.current) onCommit(ref.current.value);
+  };
+  return (
+    <textarea
+      ref={ref}
+      autoFocus
+      defaultValue={initial}
+      onBlur={commit}
+      onKeyDown={e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          commit();
+          onDone();
+        }
+        if (e.key === 'Escape') {
+          onDone();
+        }
+      }}
+      rows={2}
+      style={{
+        width: '100%', background: 'transparent',
+        border: 'none', borderBottom: '1.5px solid var(--accent)',
+        padding: '2px 0', color: 'var(--text)',
+        fontSize: 14, fontFamily: 'var(--font)', fontWeight: 700,
+        lineHeight: 1.35, outline: 'none', resize: 'none',
+        marginBottom: 4, display: 'block',
+      }}
+    />
+  );
+}
+
 function StepsScreen({ task, stepsData, aiError, onNext }) {
   const baseSteps = (stepsData && stepsData.length > 0) ? stepsData : STEPS_DATA;
   const [steps, setSteps] = useState(
@@ -637,27 +674,10 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                         }}>~{step.chosenTime}</span>
                       </div>
                       {editingIdx === si ? (
-                        <textarea
-                          autoFocus
-                          value={step.title}
-                          onChange={e => {
-                            const v = e.target.value;
-                            setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: v } : s));
-                          }}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingIdx(null); }
-                            if (e.key === 'Escape') setEditingIdx(null);
-                          }}
-                          rows={2}
-                          style={{
-                            width: '100%', background: 'transparent',
-                            border: 'none', borderBottom: '1.5px solid var(--accent)',
-                            padding: '2px 0', color: 'var(--text)',
-                            fontSize: 14, fontFamily: 'var(--font)', fontWeight: 700,
-                            lineHeight: 1.35, outline: 'none', resize: 'none',
-                            marginBottom: 4,
-                            display: 'block',
-                          }}
+                        <TitleEditor
+                          initial={step.title}
+                          onCommit={v => setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: v } : s))}
+                          onDone={() => setEditingIdx(null)}
                         />
                       ) : (
                         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.35, wordBreak: 'break-word', marginBottom: 4 }}>{step.title}</div>
