@@ -158,6 +158,18 @@ function InputScreen({ onNext }) {
 }
 
 // ── Screen 2: AI Loading ───────────────────────────────────
+// Parse "5 min", "10min", "20 minutes", "1.5 hr" etc → seconds. Falls back to 5 min.
+function parseTimeToSeconds(timeStr) {
+  if (!timeStr || typeof timeStr !== 'string') return 5 * 60;
+  const s = timeStr.toLowerCase().trim();
+  const num = parseFloat(s);
+  if (isNaN(num) || num <= 0) return 5 * 60;
+  if (/h(our|r)?/.test(s)) return Math.round(num * 3600);
+  if (/sec/.test(s)) return Math.round(num);
+  // default: minutes
+  return Math.round(num * 60);
+}
+
 // ── Environment detection ──────────────────────────────────
 // claude.ai artifact iframes can call the Anthropic API; static hosts (GitHub
 // Pages, file://) hit CORS. Detect host and skip the network call there.
@@ -604,7 +616,7 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                   transition: 'border-color 0.15s, box-shadow 0.15s',
                   overflow: 'hidden',
                 }}>
-                  {/* Header row: drag handle, number, title/chosen, edit button */}
+                  {/* Header row: drag handle, number, title/chosen/time, edit button */}
                   <div style={{
                     padding: '14px 16px',
                     display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -617,7 +629,13 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                       display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
                     }}>{si + 1}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Step {si + 1}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Step {si + 1}</span>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, color: 'var(--accent)',
+                          background: 'var(--accent-dim)', borderRadius: 99, padding: '2px 8px',
+                        }}>~{step.chosenTime}</span>
+                      </div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.35, wordBreak: 'break-word', marginBottom: 4 }}>{step.title}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4, wordBreak: 'break-word' }}>{step.chosen}</div>
                     </div>
@@ -636,53 +654,118 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                       }}>{editingIdx === si ? 'Done' : 'Edit'}</button>
                   </div>
 
-                  {/* Expanded options panel: shown only when this card is being edited */}
+                  {/* Inline edit panel: edit title, action text, and time directly */}
                   {editingIdx === si && (
                     <div style={{
                       borderTop: '1px solid var(--border)',
-                      padding: '12px 16px 14px',
-                      display: 'flex', flexDirection: 'column', gap: 8,
+                      padding: '14px 16px 16px',
+                      display: 'flex', flexDirection: 'column', gap: 12,
                       animation: 'fadeIn 0.18s ease',
                     }}>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.04em' }}>
-                        PICK AN APPROACH
+                      {/* Title field */}
+                      <div>
+                        <label style={{
+                          display: 'block', fontSize: 11, color: 'var(--text-muted)',
+                          marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
+                        }}>Step title</label>
+                        <input
+                          type="text"
+                          value={step.title}
+                          onChange={e => {
+                            const v = e.target.value;
+                            setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: v } : s));
+                          }}
+                          style={{
+                            width: '100%', background: 'var(--surface2)',
+                            border: '1.5px solid var(--border)', borderRadius: 10,
+                            padding: '12px 14px', color: 'var(--text)',
+                            fontSize: 15, fontFamily: 'var(--font)', fontWeight: 600,
+                            outline: 'none', minHeight: 50,
+                          }}
+                          onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
+                          onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
+                        />
                       </div>
-                      {step.options.map(opt => {
-                        const active = step.chosen === opt.text;
-                        return (
-                          <button key={opt.id}
+
+                      {/* Action text field */}
+                      <div>
+                        <label style={{
+                          display: 'block', fontSize: 11, color: 'var(--text-muted)',
+                          marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
+                        }}>What you'll actually do</label>
+                        <textarea
+                          value={step.chosen}
+                          onChange={e => {
+                            const v = e.target.value;
+                            setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosen: v } : s));
+                          }}
+                          style={{
+                            width: '100%', background: 'var(--surface2)',
+                            border: '1.5px solid var(--border)', borderRadius: 10,
+                            padding: '12px 14px', color: 'var(--text)',
+                            fontSize: 14, fontFamily: 'var(--font)', lineHeight: 1.5,
+                            outline: 'none', resize: 'vertical', minHeight: 70,
+                          }}
+                          onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
+                          onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
+                        />
+                      </div>
+
+                      {/* Time field — minutes only, with stepper */}
+                      <div>
+                        <label style={{
+                          display: 'block', fontSize: 11, color: 'var(--text-muted)',
+                          marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
+                        }}>Duration (minutes)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button
                             onClick={e => {
                               e.stopPropagation();
-                              setSteps(prev => prev.map((s, i) =>
-                                i === si ? { ...s, chosen: opt.text, chosenTime: opt.time } : s
-                              ));
+                              const cur = parseTimeToSeconds(step.chosenTime) / 60;
+                              const next = Math.max(1, Math.round(cur - 1));
+                              setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosenTime: `${next} min` } : s));
                             }}
                             style={{
-                              background: active ? 'var(--accent-dim)' : 'var(--surface2)',
-                              border: `1.5px solid ${active ? 'var(--accent)' : 'transparent'}`,
-                              borderRadius: 10, padding: '12px 14px',
-                              cursor: 'pointer', textAlign: 'left',
-                              display: 'flex', alignItems: 'flex-start', gap: 10,
-                              fontFamily: 'var(--font)', width: '100%',
-                              transition: 'all 0.15s',
-                            }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{
-                                fontSize: 14, color: 'var(--text)', lineHeight: 1.5,
-                                fontWeight: active ? 600 : 400,
-                                wordBreak: 'break-word', whiteSpace: 'normal',
-                              }}>{opt.text}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>~{opt.time}</div>
-                            </div>
-                            {active && (
-                              <div style={{
-                                flexShrink: 0, color: 'var(--accent)',
-                                fontSize: 16, lineHeight: 1, marginTop: 2,
-                              }}>✓</div>
-                            )}
-                          </button>
-                        );
-                      })}
+                              width: 50, minHeight: 50,
+                              background: 'var(--surface2)', border: '1px solid var(--border)',
+                              borderRadius: 10, color: 'var(--text-soft)',
+                              fontSize: 20, cursor: 'pointer', fontFamily: 'var(--font)',
+                            }}>−</button>
+                          <input
+                            type="number"
+                            min="1"
+                            max="120"
+                            value={Math.round(parseTimeToSeconds(step.chosenTime) / 60)}
+                            onChange={e => {
+                              const n = Math.max(1, parseInt(e.target.value) || 1);
+                              setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosenTime: `${n} min` } : s));
+                            }}
+                            style={{
+                              flex: 1, background: 'var(--surface2)',
+                              border: '1.5px solid var(--border)', borderRadius: 10,
+                              padding: '0 14px', color: 'var(--text)',
+                              fontSize: 16, fontFamily: 'var(--font)', fontWeight: 700,
+                              outline: 'none', minHeight: 50, textAlign: 'center',
+                              fontVariantNumeric: 'tabular-nums',
+                            }}
+                            onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
+                            onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
+                          />
+                          <button
+                            onClick={e => {
+                              e.stopPropagation();
+                              const cur = parseTimeToSeconds(step.chosenTime) / 60;
+                              const next = Math.min(120, Math.round(cur + 1));
+                              setSteps(prev => prev.map((s, i) => i === si ? { ...s, chosenTime: `${next} min` } : s));
+                            }}
+                            style={{
+                              width: 50, minHeight: 50,
+                              background: 'var(--surface2)', border: '1px solid var(--border)',
+                              borderRadius: 10, color: 'var(--text-soft)',
+                              fontSize: 20, cursor: 'pointer', fontFamily: 'var(--font)',
+                            }}>+</button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -701,18 +784,25 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
 }
 
 // ── Screen 4: Timer ────────────────────────────────────────
-const FALLBACK_STEPS = STEPS_DATA.map((s, i) => ({ ...s, chosen: s.options[0].text }));
+const FALLBACK_STEPS = STEPS_DATA.map((s) => ({ ...s, chosen: s.options[0].text, chosenTime: s.options[0].time }));
 
 function TimerScreen({ steps, presenceCount, onDone }) {
   const safeSteps = (steps && steps.length > 0) ? steps : FALLBACK_STEPS;
   const [stepIdx, setStepIdx] = useState(0);
   const step = safeSteps[stepIdx];
-  const totalSecs = [5 * 60, 10 * 60, 20 * 60][stepIdx];
+  // Pull duration from each step's chosenTime; falls back to 5 min if missing
+  const totalSecs = parseTimeToSeconds(step.chosenTime);
   const [secs, setSecs] = useState(totalSecs);
   const [running, setRunning] = useState(false);
   const [presence] = useState(presenceCount + Math.floor(Math.random() * 12));
   const [presenceDelta, setPresenceDelta] = useState(0);
   const intervalRef = useRef();
+
+  // When user moves to next step, reset timer to that step's duration
+  useEffect(() => {
+    setSecs(parseTimeToSeconds(safeSteps[stepIdx]?.chosenTime));
+    setRunning(false);
+  }, [stepIdx]);
 
   useEffect(() => {
     if (running) {
@@ -750,7 +840,10 @@ function TimerScreen({ steps, presenceCount, onDone }) {
           ))}
         </div>
 
-        <Tag>{step.label}</Tag>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Tag>{step.label}</Tag>
+          <Tag style={{ background: 'var(--surface2)', color: 'var(--text-soft)' }}>~{step.chosenTime}</Tag>
+        </div>
         <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 6, marginTop: 10 }}>{step.title}</h2>
         <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 28 }}>{step.chosen}</p>
 
@@ -803,7 +896,7 @@ function TimerScreen({ steps, presenceCount, onDone }) {
             {running ? '⏸ Pause' : (secs === totalSecs ? '▶ Start Timer' : '▶ Resume')}
           </Btn>
           {stepIdx < safeSteps.length - 1 ? (
-            <Btn variant="ghost" onClick={() => { setStepIdx(i => i + 1); setSecs([5*60, 10*60, 20*60][stepIdx+1]); setRunning(false); }} style={{ width: '100%' }}>
+            <Btn variant="ghost" onClick={() => setStepIdx(i => i + 1)} style={{ width: '100%' }}>
               Next Step
             </Btn>
           ) : (
