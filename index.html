@@ -616,7 +616,7 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                   transition: 'border-color 0.15s, box-shadow 0.15s',
                   overflow: 'hidden',
                 }}>
-                  {/* Header row: drag handle, number, title/chosen/time, edit button */}
+                  {/* Single row that becomes editable in place when Edit is pressed */}
                   <div style={{
                     padding: '14px 16px',
                     display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -636,7 +636,36 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                           background: 'var(--accent-dim)', borderRadius: 99, padding: '2px 8px',
                         }}>~{step.chosenTime}</span>
                       </div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.35, wordBreak: 'break-word', marginBottom: 4 }}>{step.title}</div>
+                      {editingIdx === si ? (
+                        <textarea
+                          autoFocus
+                          value={step.title}
+                          onChange={e => {
+                            const v = e.target.value;
+                            setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: v } : s));
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingIdx(null); }
+                            if (e.key === 'Escape') setEditingIdx(null);
+                          }}
+                          rows={2}
+                          style={{
+                            width: '100%', background: 'transparent',
+                            border: 'none', borderBottom: '1.5px solid var(--accent)',
+                            padding: '2px 0', color: 'var(--text)',
+                            fontSize: 14, fontFamily: 'var(--font)', fontWeight: 700,
+                            lineHeight: 1.35, outline: 'none', resize: 'none',
+                            marginBottom: 4, overflow: 'hidden',
+                          }}
+                          onInput={e => {
+                            // auto-grow to fit content
+                            e.target.style.height = 'auto';
+                            e.target.style.height = e.target.scrollHeight + 'px';
+                          }}
+                        />
+                      ) : (
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.35, wordBreak: 'break-word', marginBottom: 4 }}>{step.title}</div>
+                      )}
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.4, wordBreak: 'break-word' }}>{step.chosen}</div>
                     </div>
                     <button
@@ -653,45 +682,6 @@ function StepsScreen({ task, stepsData, aiError, onNext }) {
                         fontWeight: editingIdx === si ? 700 : 600,
                       }}>{editingIdx === si ? 'Done' : 'Edit'}</button>
                   </div>
-
-                  {/* Inline edit panel: edit title only. Time is shown as info, not editable. */}
-                  {editingIdx === si && (
-                    <div style={{
-                      borderTop: '1px solid var(--border)',
-                      padding: '14px 16px 16px',
-                      display: 'flex', flexDirection: 'column', gap: 10,
-                      animation: 'fadeIn 0.18s ease',
-                    }}>
-                      <label style={{
-                        display: 'block', fontSize: 11, color: 'var(--text-muted)',
-                        letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600,
-                      }}>Edit step title</label>
-                      <textarea
-                        autoFocus
-                        value={step.title}
-                        onChange={e => {
-                          const v = e.target.value;
-                          setSteps(prev => prev.map((s, i) => i === si ? { ...s, title: v } : s));
-                        }}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setEditingIdx(null); }
-                          if (e.key === 'Escape') setEditingIdx(null);
-                        }}
-                        style={{
-                          width: '100%', background: 'var(--surface2)',
-                          border: '1.5px solid var(--border)', borderRadius: 10,
-                          padding: '12px 14px', color: 'var(--text)',
-                          fontSize: 15, fontFamily: 'var(--font)', fontWeight: 600, lineHeight: 1.4,
-                          outline: 'none', resize: 'none', minHeight: 60,
-                        }}
-                        onFocus={e => { e.target.style.borderColor = 'var(--accent)'; }}
-                        onBlur={e => { e.target.style.borderColor = 'var(--border)'; }}
-                      />
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5, margin: 0 }}>
-                        This step is timed for <strong style={{ color: 'var(--accent)', fontWeight: 600 }}>~{step.chosenTime}</strong>. The timer will run for that duration when you start.
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             );
